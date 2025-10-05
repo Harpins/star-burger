@@ -2,12 +2,76 @@ from django.contrib import admin
 from django.shortcuts import reverse
 from django.templatetags.static import static
 from django.utils.html import format_html
+from django.db.models import Sum, F
 
-from .models import Product
-from .models import ProductCategory
-from .models import Restaurant
-from .models import RestaurantMenuItem
+from .models import Product, ProductCategory, Restaurant, RestaurantMenuItem, Order, OrderItem
 
+class OrderItemInline(admin.TabularInline): 
+    model = OrderItem
+    extra = 0  
+    min_num = 1  
+    readonly_fields = ['get_total_price'] 
+    
+    fields = ['product', 'quantity', 'get_total_price']
+        
+    def get_total_price(self, obj):
+        return f"{obj.get_total_price()} руб."
+    get_total_price.short_description = 'Стоимость позиции'
+    
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 
+        'firstname', 
+        'lastname', 
+        'phonenumber', 
+        'address',
+        'created_at',
+        'get_total_order_price',
+        'get_items_count'
+    ]
+    
+    list_filter = ['created_at']
+    search_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+    readonly_fields = ['created_at', 'updated_at', 'get_total_order_price']
+    
+    inlines = [OrderItemInline]
+    
+    fieldsets = [
+        ('Информация о клиенте', {
+            'fields': [
+                'firstname', 
+                'lastname', 
+                'phonenumber', 
+                'address'
+            ]
+        }),
+        ('Даты', {
+            'fields': [
+                'created_at', 
+                'updated_at'
+            ],
+            'classes': ['collapse']
+        }),
+        ('Итоговая стоимость', {
+            'fields': ['get_total_order_price']
+        }),
+    ]
+    
+    def get_total_order_price(self, obj):
+        total = obj.items.aggregate(total=Sum(F('quantity') * F('product__price')))['total']
+        return f"{total} руб." if total else "0 руб."
+    get_total_order_price.short_description = 'Итоговая стоимость'
+    
+    
+    def get_items_count(self, obj):
+        """Количество позиций в заказе"""
+        return obj.items.count()
+    get_items_count.short_description = 'Кол-во позиций'
+    
+    def get_queryset(self, request):
+        """Оптимизация запроса с prefetch_related"""
+        return super().get_queryset(request).prefetch_related('items', 'items__product')
 
 class RestaurantMenuItemInline(admin.TabularInline):
     model = RestaurantMenuItem
@@ -104,3 +168,4 @@ class ProductAdmin(admin.ModelAdmin):
 @admin.register(ProductCategory)
 class ProductAdmin(admin.ModelAdmin):
     pass
+

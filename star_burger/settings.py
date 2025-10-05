@@ -27,7 +27,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'debug_toolbar',
+    'phonenumber_field'
 ]
+
+PHONENUMBER_DEFAULT_REGION = 'RU'
+PHONENUMBER_DB_FORMAT = 'E164'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
