@@ -29,7 +29,7 @@ class OrderItemResponseSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
-    products = OrderItemCreateSerializer(many=True)
+    products = OrderItemCreateSerializer(many=True, required=True, allow_empty=False)
 
     class Meta:
         model = Order
@@ -44,7 +44,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         except:
             raise serializers.ValidationError("Неверный формат номера")
 
-    def validate_items(self, value):
+    def validate_products(self, value):
         if not value:
             raise serializers.ValidationError(
                 "Заказ должен содержать хотя бы один товар"

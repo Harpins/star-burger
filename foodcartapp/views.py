@@ -87,14 +87,14 @@ def register_order(request):
             order = serializer.save()
 
             response_data = {
-                "id":order.id,
+                "id": order.id,
                 "firstname": order.firstname,
                 "lastname": order.lastname,
                 "phonenumber": str(order.phonenumber),
                 "address": order.address,
                 "created_at": order.created_at.isoformat(),
                 "products": OrderItemResponseSerializer(
-                    order.items.all(), many=True
+                    order.items.all(), many=True, allow_empty=False
                 ).data,
                 "total_cost": sum(item.get_total_price() for item in order.items.all()),
             }
