@@ -4,31 +4,12 @@ from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-import phonenumbers
-from phonenumbers import NumberParseException, PhoneNumberType
-
-from .models import Product, Order, OrderItem
-
-
-def is_valid_phonenumber(phonenumber):
-
-    try:
-        parsed_number = phonenumbers.parse(phonenumber, "RU")
-
-        if not phonenumbers.is_valid_number(parsed_number):
-            return False
-
-        number_type = phonenumbers.number_type(parsed_number)
-        if number_type not in [
-            PhoneNumberType.MOBILE,
-            PhoneNumberType.FIXED_LINE_OR_MOBILE,
-        ]:
-            return False
-
-        return True
-
-    except NumberParseException:
-        return False
+from .serializers import (
+    OrderCreateSerializer,
+    OrderItemCreateSerializer,
+    OrderItemResponseSerializer,
+)
+from .models import Product
 
 
 def banners_list_api(request):
@@ -98,117 +79,29 @@ def product_list_api(request):
 @api_view(["POST"])
 def register_order(request):
     try:
-        order_data = request.data
-        required_fields = [
-            "firstname",
-            "lastname",
-            "phonenumber",
-            "address",
-            "products",
-        ]
-        missing_fields = [
-            field for field in required_fields if not order_data.get(field)
-        ]
-
-        if missing_fields:
-            return Response(
-                {
-                    "error": f'Не заполнены обязательные поля: {", ".join(missing_fields)}'
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        string_fields = ["firstname", "lastname", "phonenumber", "address"]
-        non_string_fields = []
-
-        for field in string_fields:
-            if not isinstance(order_data.get(field), str):
-                non_string_fields.append(field)
-
-        if non_string_fields:
-            return Response(
-                {"error": f'Поля должны быть строками: {", ".join(non_string_fields)}'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        phonenumber = order_data["phonenumber"].strip()
-        if not is_valid_phonenumber(phonenumber):
-            return Response(
-                {"error": "Неверный формат номера телефона"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not isinstance(order_data["products"], list):
-            return Response(
-                {"error": "Поле 'products' должно быть списком"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        products_to_add = []
-        for product_data in order_data["products"]:
-            product_id = product_data.get("product")
-            quantity = product_data.get("quantity", 1)
-
-            try:
-                product = Product.objects.get(id=product_id)
-            except Product.DoesNotExist:
-                return Response(
-                    {"error": f"Товар с ID {product_id} не найден"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if quantity < 1 or quantity > 100:
-                return Response(
-                    {
-                        "error": f"Количество товара {product.name} должно быть от 1 до 100"
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            products_to_add.append((product, quantity))
-
         with transaction.atomic():
-            order = Order.objects.create(
-                firstname=order_data["firstname"].strip(),
-                lastname=order_data["lastname"].strip(),
-                phonenumber=order_data["phonenumber"].strip(),
-                address=order_data["address"].strip(),
-            )
+            serializer = OrderCreateSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            order_items = [
-                OrderItem(order=order, product=product, quantity=quantity)
-                for product, quantity in products_to_add
-            ]
+            order = serializer.save()
 
-            OrderItem.objects.bulk_create(order_items)
-
-        order_items = order.items.select_related("product").all()
-        total_cost = sum(item.get_total_price() for item in order_items)
-
-        response_data = {
-            "id": order.id,
-            "firstname": order.firstname,
-            "lastname": order.lastname,
-            "phonenumber": str(order.phonenumber),
-            "address": order.address,
-            "created_at": order.created_at.isoformat(),
-            "total_cost": str(total_cost),
-            "products": [
-                {
-                    "id": item.product.id,
-                    "name": item.product.name,
-                    "quantity": item.quantity,
-                    "price": str(item.product.price),
-                    "total_price": str(item.get_total_price()),
-                }
-                for item in order_items
-            ],
-        }
-
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
+            response_data = {
+                "id":order.id,
+                "firstname": order.firstname,
+                "lastname": order.lastname,
+                "phonenumber": str(order.phonenumber),
+                "address": order.address,
+                "created_at": order.created_at.isoformat(),
+                "products": OrderItemResponseSerializer(
+                    order.items.all(), many=True
+                ).data,
+                "total_cost": sum(item.get_total_price() for item in order.items.all()),
+            }
+            return Response(response_data, status=status.HTTP_201_CREATED)
     except Exception as err:
+        print(err)
         return Response(
-            {"error": f"Внутренняя ошибка сервера: {str(err)}"},
+            {"error": str(err)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
