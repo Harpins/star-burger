@@ -10,13 +10,10 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0  
     min_num = 1  
-    readonly_fields = ['get_total_price'] 
+    readonly_fields = ['price_at_order'] 
     
-    fields = ['product', 'quantity', 'get_total_price']
-        
-    def get_total_price(self, obj):
-        return f"{obj.get_total_price()} руб."
-    get_total_price.short_description = 'Стоимость позиции'
+    fields = ['product', 'quantity', 'price_at_order']
+
     
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -59,7 +56,7 @@ class OrderAdmin(admin.ModelAdmin):
     ]
     
     def get_total_order_price(self, obj):
-        total = obj.items.aggregate(total=Sum(F('quantity') * F('product__price')))['total']
+        total = obj.items.aggregate(total=Sum(F('quantity') * F('price_at_order')))['total']
         return f"{total} руб." if total else "0 руб."
     get_total_order_price.short_description = 'Итоговая стоимость'
     

@@ -144,6 +144,15 @@ class OrderItem(models.Model):
         default=1,
     )
 
+    price_at_order = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Цена на момент заказа",
+        editable=False,
+        default=0
+    )
+
     class Meta:
         verbose_name = "позиция в заказе"
         verbose_name_plural = "позиции в заказе"
@@ -153,5 +162,4 @@ class OrderItem(models.Model):
         return f"{self.product.name} x {self.quantity} (заказ #{self.order.id})"
 
     def get_total_price(self):
-        """Итоговая стоимость позиции"""
-        return self.quantity * self.product.price
+        return self.quantity * self.price_at_order

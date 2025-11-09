@@ -57,9 +57,13 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         order_items = []
         for item in items_data:
+            product_obj = item["product_id"]
             order_items.append(
                 OrderItem(
-                    order=order, product=item["product_id"], quantity=item["quantity"]
+                    order=order,
+                    product=product_obj,
+                    quantity=item["quantity"],
+                    price_at_order=product_obj.price,
                 )
             )
         OrderItem.objects.bulk_create(order_items)
