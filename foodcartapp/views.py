@@ -4,10 +4,31 @@ from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-
+import phonenumbers
+from phonenumbers import NumberParseException, PhoneNumberType
 
 from .models import Product, Order, OrderItem
-import json
+
+
+def is_valid_phonenumber(phonenumber):
+
+    try:
+        parsed_number = phonenumbers.parse(phonenumber, "RU")
+
+        if not phonenumbers.is_valid_number(parsed_number):
+            return False
+
+        number_type = phonenumbers.number_type(parsed_number)
+        if number_type not in [
+            PhoneNumberType.MOBILE,
+            PhoneNumberType.FIXED_LINE_OR_MOBILE,
+        ]:
+            return False
+
+        return True
+
+    except NumberParseException:
+        return False
 
 
 def banners_list_api(request):
@@ -94,6 +115,26 @@ def register_order(request):
                 {
                     "error": f'Не заполнены обязательные поля: {", ".join(missing_fields)}'
                 },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        string_fields = ["firstname", "lastname", "phonenumber", "address"]
+        non_string_fields = []
+
+        for field in string_fields:
+            if not isinstance(order_data.get(field), str):
+                non_string_fields.append(field)
+
+        if non_string_fields:
+            return Response(
+                {"error": f'Поля должны быть строками: {", ".join(non_string_fields)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        phonenumber = order_data["phonenumber"].strip()
+        if not is_valid_phonenumber(phonenumber):
+            return Response(
+                {"error": "Неверный формат номера телефона"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

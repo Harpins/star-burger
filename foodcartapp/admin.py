@@ -102,6 +102,7 @@ class ProductAdmin(admin.ModelAdmin):
         'name',
         'category',
         'price',
+        'id'
     ]
     list_display_links = [
         'name',
@@ -142,6 +143,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     readonly_fields = [
         'get_image_preview',
+        'id'
     ]
 
     class Media:
