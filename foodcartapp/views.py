@@ -88,6 +88,7 @@ def register_order(request):
         missing_fields = [
             field for field in required_fields if not order_data.get(field)
         ]
+        
 
         if missing_fields:
             return Response(
@@ -96,6 +97,14 @@ def register_order(request):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+            
+        
+        if not isinstance(order_data["products"], list):
+            return Response(
+                {"error": "Поле 'products' должно быть списком"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
 
         if not order_data["products"]:
             return Response(
@@ -165,7 +174,7 @@ def register_order(request):
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
-
+    
     except Exception as err:
         return Response(
             {"error": f"Внутренняя ошибка сервера: {str(err)}"},
