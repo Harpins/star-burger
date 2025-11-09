@@ -6,9 +6,9 @@ from django.contrib.auth.decorators import user_passes_test
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from django.db.models import Sum, F
 
-
-from foodcartapp.models import Product, Restaurant
+from foodcartapp.models import Product, Restaurant, Order
 
 
 class Login(forms.Form):
@@ -60,7 +60,7 @@ class LogoutView(auth_views.LogoutView):
 
 
 def is_manager(user):
-    return user.is_staff  # FIXME replace with specific permission
+    return user.is_authenticated and (user.is_staff or user.groups.filter(name='manager').exists())
 
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
@@ -92,6 +92,11 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    return render(request, template_name='order_items.html', context={
-        # TODO заглушка для нереализованного функционала
-    })
+    orders = Order.objects.prefetch_related('items__product').annotate(
+        total_price=Sum(F('items__quantity') * F('items__product__price'))
+    ).order_by('-created_at')
+
+    context = {
+        'orders': orders
+    }
+    return render(request, 'order_items.html', context)
