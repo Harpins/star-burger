@@ -35,6 +35,8 @@ class OrderAdmin(admin.ModelAdmin):
         "phonenumber",
         "address",
         "created_at",
+        "called_at",
+        "delivered_at",
         "get_total_order_price",
         "get_items_count",
         "commentary"
@@ -42,7 +44,7 @@ class OrderAdmin(admin.ModelAdmin):
 
     list_filter = ["created_at", "status"]
     search_fields = ["firstname", "lastname", "phonenumber", "address", "status"]
-    readonly_fields = ["created_at", "updated_at", "get_total_order_price"]
+    readonly_fields = ["created_at", "get_total_order_price"]
 
     inlines = [OrderItemInline]
 
@@ -52,7 +54,7 @@ class OrderAdmin(admin.ModelAdmin):
             {"fields": ["firstname", "lastname", "phonenumber", "address"]},
         ),
         ("Статус", {"fields": ["status"]}),
-        ("Даты", {"fields": ["created_at", "updated_at"], "classes": ["collapse"]}),
+        ("Даты", {"fields": ["created_at", "called_at", "delivered_at"], "classes": ["collapse"]}),
         ("Итоговая стоимость", {"fields": ["get_total_order_price"]}),
         ("Комментарий", {"fields": ["commentary"]}),
     ]

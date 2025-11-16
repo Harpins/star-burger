@@ -122,14 +122,30 @@ class Order(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name="Создан", db_index=True
     )
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлен")
-    
-    status = models.CharField(max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус")
-    commentary = models.TextField(max_length=500, verbose_name="Комментарий", blank=True, null=True)
+    called_at = models.DateTimeField(
+        editable=True,
+        verbose_name="Время звонка",
+        null=True,
+        blank=True,
+    )
+    delivered_at = models.DateTimeField(
+        editable=True,
+        verbose_name="Доставлен",
+        blank=True,
+        null=True,
+    )
+
+    status = models.CharField(
+        max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус"
+    )
+    commentary = models.TextField(
+        max_length=500, verbose_name="Комментарий", blank=True, null=True
+    )
 
     class Meta:
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
@@ -159,7 +175,7 @@ class OrderItem(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Цена на момент заказа",
         editable=False,
-        default=0
+        default=0,
     )
 
     class Meta:
