@@ -29,7 +29,7 @@
         <td>{{ order.phonenumber }}</td>
         <td>{{ order.address }}</td>
         <td>
-          <a href="{% url 'admin:foodcartapp_order_change' order.id %}" target="_blank">
+          <a href="{% url 'admin:foodcartapp_order_change' order.id %}?next={{ request.get_full_path|urlencode }}" target="_blank">
             Редактировать
           </a>
         </td>
