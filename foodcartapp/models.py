@@ -109,6 +109,11 @@ class Order(models.Model):
         "sh": "Отправлен",
         "dl": "Доставлен",
     }
+    PAYMENT_TYPES = {
+        "nstd":"Не установлен",
+        "epay": "Электронно",
+        "cash": "Наличными",
+    }
     firstname = models.CharField(
         max_length=100, verbose_name="Имя", null=False, blank=False
     )
@@ -140,6 +145,10 @@ class Order(models.Model):
     )
     commentary = models.TextField(
         max_length=500, verbose_name="Комментарий", blank=True, null=True
+    )
+    
+    payment_type = models.CharField(
+        max_length=4, choices=PAYMENT_TYPES, default="nstd", verbose_name="Тип оплаты"
     )
 
     class Meta:

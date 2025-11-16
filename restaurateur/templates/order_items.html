@@ -15,6 +15,7 @@
     <tr>
       <th>ID заказа</th>
       <th>Статус заказа</th>
+      <th>Тип оплаты</th>
       <th>Стоимость заказа</th>
       <th>Клиент</th>
       <th>Телефон</th>
@@ -27,6 +28,7 @@
       <tr>
         <td>{{ order.id }}</td>
         <td>{{ order.get_status_display }}</td>
+        <td>{{ order.get_payment_type_display|default:"—"}}
         <td>{{ order.total_price|floatformat:2 }}</td>
         <td>{{ order.firstname }} {{ order.lastname }}</td>
         <td>{{ order.phonenumber }}</td>
