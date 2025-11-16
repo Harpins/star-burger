@@ -29,6 +29,7 @@ class OrderItemInline(admin.TabularInline):
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
         "id",
+        "status",
         "firstname",
         "lastname",
         "phonenumber",
@@ -38,8 +39,8 @@ class OrderAdmin(admin.ModelAdmin):
         "get_items_count",
     ]
 
-    list_filter = ["created_at"]
-    search_fields = ["firstname", "lastname", "phonenumber", "address"]
+    list_filter = ["created_at", "status"]
+    search_fields = ["firstname", "lastname", "phonenumber", "address", "status"]
     readonly_fields = ["created_at", "updated_at", "get_total_order_price"]
 
     inlines = [OrderItemInline]
@@ -49,6 +50,7 @@ class OrderAdmin(admin.ModelAdmin):
             "Информация о клиенте",
             {"fields": ["firstname", "lastname", "phonenumber", "address"]},
         ),
+        ("Статус", {"fields": ["status"]}),
         ("Даты", {"fields": ["created_at", "updated_at"], "classes": ["collapse"]}),
         ("Итоговая стоимость", {"fields": ["get_total_order_price"]}),
     ]

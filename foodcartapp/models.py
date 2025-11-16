@@ -103,6 +103,12 @@ class RestaurantMenuItem(models.Model):
 
 
 class Order(models.Model):
+    ORDER_STATUSES = {
+        "un": "Необработан",
+        "pr": "В обработке",
+        "sh": "Отправлен",
+        "dl": "Доставлен",
+    }
     firstname = models.CharField(
         max_length=100, verbose_name="Имя", null=False, blank=False
     )
@@ -117,6 +123,8 @@ class Order(models.Model):
         auto_now_add=True, verbose_name="Создан", db_index=True
     )
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлен")
+    
+    status = models.CharField(max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус")
 
     class Meta:
         verbose_name = "Заказ"
