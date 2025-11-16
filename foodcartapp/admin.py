@@ -37,6 +37,7 @@ class OrderAdmin(admin.ModelAdmin):
         "created_at",
         "get_total_order_price",
         "get_items_count",
+        "commentary"
     ]
 
     list_filter = ["created_at", "status"]
@@ -53,6 +54,7 @@ class OrderAdmin(admin.ModelAdmin):
         ("Статус", {"fields": ["status"]}),
         ("Даты", {"fields": ["created_at", "updated_at"], "classes": ["collapse"]}),
         ("Итоговая стоимость", {"fields": ["get_total_order_price"]}),
+        ("Комментарий", {"fields": ["commentary"]}),
     ]
 
     def get_total_order_price(self, obj):

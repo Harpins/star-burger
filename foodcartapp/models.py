@@ -125,6 +125,7 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлен")
     
     status = models.CharField(max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус")
+    commentary = models.TextField(max_length=500, verbose_name="Комментарий", blank=True, null=True)
 
     class Meta:
         verbose_name = "Заказ"
