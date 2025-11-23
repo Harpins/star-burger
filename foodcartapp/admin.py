@@ -23,6 +23,15 @@ class OrderItemInline(admin.TabularInline):
     readonly_fields = ["price_at_order"]
 
     fields = ["product", "quantity", "price_at_order"]
+    
+    
+class RestaurantMenuItemInline(admin.TabularInline):
+    model = RestaurantMenuItem
+    extra = 0
+    min_num = 1
+    readonly_fields = ["restaurant", "product", "availability"]
+    fields = ["restaurant", "product", "availability"]
+
 
 
 @admin.register(Order)
@@ -30,6 +39,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "status",
+        "cooking_restaurant",
         "payment_type",
         "firstname",
         "lastname",
@@ -43,8 +53,8 @@ class OrderAdmin(admin.ModelAdmin):
         "commentary"
     ]
 
-    list_filter = ["created_at", "status", "payment_type"]
-    search_fields = ["firstname", "lastname", "phonenumber", "address", "status", "payment_type"]
+    list_filter = ["created_at", "status", "payment_type", "cooking_restaurant"]
+    search_fields = ["firstname", "lastname", "phonenumber", "address", "status", "payment_type", "cooking_restaurant"]
     readonly_fields = ["created_at", "get_total_order_price"]
 
     inlines = [OrderItemInline]
@@ -55,6 +65,7 @@ class OrderAdmin(admin.ModelAdmin):
             {"fields": ["firstname", "lastname", "phonenumber", "address"]},
         ),
         ("Статус", {"fields": ["status"]}),
+        ("Ресторан", {"fields": ["cooking_restaurant"]}),
         ("Оплата", {"fields": ["payment_type"]}),
         ("Даты", {"fields": ["created_at", "called_at", "delivered_at"], "classes": ["collapse"]}),
         ("Итоговая стоимость", {"fields": ["get_total_order_price"]}),
@@ -89,9 +100,6 @@ class OrderAdmin(admin.ModelAdmin):
         return response
 
 
-class RestaurantMenuItemInline(admin.TabularInline):
-    model = RestaurantMenuItem
-    extra = 0
 
 
 @admin.register(Restaurant)

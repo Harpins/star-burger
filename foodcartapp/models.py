@@ -105,12 +105,12 @@ class RestaurantMenuItem(models.Model):
 class Order(models.Model):
     ORDER_STATUSES = {
         "un": "Необработан",
-        "pr": "В обработке",
+        "pr": "Готовится",
         "sh": "Отправлен",
         "dl": "Доставлен",
     }
     PAYMENT_TYPES = {
-        "nstd":"Не установлен",
+        "nstd": "Не установлен",
         "epay": "Электронно",
         "cash": "Наличными",
     }
@@ -143,10 +143,20 @@ class Order(models.Model):
     status = models.CharField(
         max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус"
     )
+
+    cooking_restaurant = models.ForeignKey(
+        Restaurant,
+        verbose_name="Ресторан",
+        related_name="orders",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
     commentary = models.TextField(
         max_length=500, verbose_name="Комментарий", blank=True, null=True
     )
-    
+
     payment_type = models.CharField(
         max_length=4, choices=PAYMENT_TYPES, default="nstd", verbose_name="Тип оплаты"
     )
