@@ -162,12 +162,13 @@ class RestaurantAdmin(admin.ModelAdmin):
 
     list_display = ["name", "address", "contact_phone", "get_coordinates"]
     inlines = [RestaurantMenuItemInline]
+
     def get_coordinates(self, obj):
         if obj.latitude and obj.longitude:
-            return f'Широта: {obj.latitude}, Долгота: {obj.longitude},'
-        return 'Не определены'
-    get_coordinates.short_description = "Координаты"
+            return f"Широта: {obj.latitude}, Долгота: {obj.longitude},"
+        return "Не определены"
 
+    get_coordinates.short_description = "Координаты"
 
 
 @admin.register(Product)
