@@ -23,15 +23,14 @@ class OrderItemInline(admin.TabularInline):
     readonly_fields = ["price_at_order"]
 
     fields = ["product", "quantity", "price_at_order"]
-    
-    
+
+
 class RestaurantMenuItemInline(admin.TabularInline):
     model = RestaurantMenuItem
     extra = 0
     min_num = 1
     readonly_fields = ["restaurant", "product", "availability"]
     fields = ["restaurant", "product", "availability"]
-
 
 
 @admin.register(Order)
@@ -50,11 +49,19 @@ class OrderAdmin(admin.ModelAdmin):
         "delivered_at",
         "get_total_order_price",
         "get_items_count",
-        "commentary"
+        "commentary",
     ]
 
     list_filter = ["created_at", "status", "payment_type", "cooking_restaurant"]
-    search_fields = ["firstname", "lastname", "phonenumber", "address", "status", "payment_type", "cooking_restaurant"]
+    search_fields = [
+        "firstname",
+        "lastname",
+        "phonenumber",
+        "address",
+        "status",
+        "payment_type",
+        "cooking_restaurant",
+    ]
     readonly_fields = ["created_at", "get_total_order_price"]
 
     inlines = [OrderItemInline]
@@ -67,7 +74,13 @@ class OrderAdmin(admin.ModelAdmin):
         ("Статус", {"fields": ["status"]}),
         ("Ресторан", {"fields": ["cooking_restaurant"]}),
         ("Оплата", {"fields": ["payment_type"]}),
-        ("Даты", {"fields": ["created_at", "called_at", "delivered_at"], "classes": ["collapse"]}),
+        (
+            "Даты",
+            {
+                "fields": ["created_at", "called_at", "delivered_at"],
+                "classes": ["collapse"],
+            },
+        ),
         ("Итоговая стоимость", {"fields": ["get_total_order_price"]}),
         ("Комментарий", {"fields": ["commentary"]}),
     ]
@@ -88,6 +101,43 @@ class OrderAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("items", "items__product")
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "cooking_restaurant":
+            order_id = request.resolver_match.kwargs.get("object_id")
+            if not order_id:
+                kwargs["queryset"] = Restaurant.objects.all()
+                return super().formfield_for_foreignkey(db_field, request, **kwargs)
+            try:
+                order = Order.objects.prefetch_related("items__product").get(
+                    id=order_id
+                )
+                available_restaurants = None
+                for item in order.items.all():
+                    restaurants = set(item.product.available_restaurants())
+                    if available_restaurants is None:
+                        available_restaurants = restaurants
+                    else:
+                        available_restaurants &= restaurants
+                    if not available_restaurants:
+                        break
+
+                if available_restaurants:
+                    queryset = Restaurant.objects.filter(
+                        id__in=[r.id for r in available_restaurants]
+                    )
+                    kwargs["queryset"] = queryset.order_by("name")
+                    kwargs["help_text"] = f"Доступно: {queryset.count()} рестор."
+                else:
+                    kwargs["queryset"] = Restaurant.objects.none()
+                    kwargs["help_text"] = (
+                        "<span style='color:red; font-weight:bold;'>"
+                        "Нет ресторанов, которые могут приготовить этот заказ!"
+                        "</span>"
+                    )
+            except Order.DoesNotExist:
+                kwargs["queryset"] = Restaurant.objects.all()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def response_post_save_change(self, request, obj):
         response = super().response_post_save_change(request, obj)
         if "next" in request.GET:
@@ -98,8 +148,6 @@ class OrderAdmin(admin.ModelAdmin):
             ):
                 return HttpResponseRedirect(next_url)
         return response
-
-
 
 
 @admin.register(Restaurant)

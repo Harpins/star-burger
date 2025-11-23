@@ -74,6 +74,11 @@ class Product(models.Model):
         verbose_name = "товар"
         verbose_name_plural = "товары"
 
+    def available_restaurants(self):
+        return Restaurant.objects.filter(
+            menu_items__product=self, menu_items__availability=True
+        ).distinct()
+
     def __str__(self):
         return f"{self.name} - {self.price}"
 
@@ -91,7 +96,7 @@ class RestaurantMenuItem(models.Model):
         related_name="menu_items",
         verbose_name="продукт",
     )
-    availability = models.BooleanField("в продаже", default=True, db_index=True)
+    availability = models.BooleanField("в продаже", default=False, db_index=True)
 
     class Meta:
         verbose_name = "пункт меню ресторана"
@@ -146,11 +151,11 @@ class Order(models.Model):
 
     cooking_restaurant = models.ForeignKey(
         Restaurant,
-        verbose_name="Ресторан",
+        verbose_name="Ресторан-исполнитель",
         related_name="orders",
         on_delete=models.CASCADE,
         null=True,
-        blank=True
+        blank=True,
     )
 
     commentary = models.TextField(
