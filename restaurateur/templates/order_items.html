@@ -37,14 +37,26 @@
         <td>{{ order.commentary|default:"—"}}</td>
         <td>
           {% if order.cooking_restaurant %}
-            <strong style="color: green;">Готовится: {{ order.cooking_restaurant.name }}</strong>
+            <strong style="color: green;">
+              Готовится: {{ order.cooking_restaurant.name }}
+              {% if order.distance_to_current_restaurant is not None %}
+                ({{ order.distance_to_current_restaurant }} км)
+              {% endif %}
+            </strong>
+
           {% elif order.can_cook_here %}
             Может быть приготовлен:
-            <details> 
-            {% for restaurant in order.can_cook_here %}
-              <strong style="color: blue;">{{ restaurant.name }}</strong>
-            {% endfor %}
-            </details> 
+            <details>
+              {% for entry in order.can_cook_here %}
+                <div>
+                  {{ entry.restaurant.name }}
+                  {% if entry.distance is not None %}
+                    — {{ entry.distance }} км
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </details>
+
           {% else %}
             <strong style="color: red;">Нет доступных ресторанов</strong>
           {% endif %}

@@ -4,6 +4,25 @@ from phonenumber_field.modelfields import PhoneNumberField
 from .utils import fetch_coordinates, calculate_distance
 
 
+class AddressCache(models.Model):
+    address = models.CharField("Адрес", max_length=200, unique=True)
+    longitude = models.DecimalField(
+        "Долгота", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    latitude = models.DecimalField(
+        "Широта", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    updated_at = models.DateTimeField("Обновлено", auto_now=True)
+    fetched_at = models.DateTimeField("Найдено", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Кэш геокодирования"
+        verbose_name_plural = "Кэш геокодирования"
+
+    def __str__(self):
+        return f"{self.address} → ({self.longitude}, {self.latitude})"
+
+
 class Restaurant(models.Model):
     name = models.CharField("название", max_length=50)
     address = models.CharField(
@@ -16,9 +35,13 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
-    
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта")
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота")
+
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта"
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота"
+    )
 
     class Meta:
         verbose_name = "ресторан"
@@ -101,7 +124,6 @@ class RestaurantMenuItem(models.Model):
         verbose_name="продукт",
     )
     availability = models.BooleanField("в продаже", default=False, db_index=True)
-    
 
     class Meta:
         verbose_name = "пункт меню ресторана"
@@ -153,8 +175,7 @@ class Order(models.Model):
     status = models.CharField(
         max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус"
     )
-    
-    
+
     cooking_restaurant = models.ForeignKey(
         Restaurant,
         verbose_name="Ресторан-исполнитель",
@@ -163,9 +184,13 @@ class Order(models.Model):
         null=True,
         blank=True,
     )
-    
+
     distance_to_restaurant = models.DecimalField(
-        "расстояние до ресторана (км)", max_digits=6, decimal_places=2, null=True, blank=True
+        "расстояние до ресторана (км)",
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
 
     commentary = models.TextField(
@@ -183,19 +208,22 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
-    
-    def get_client_coordinates(self):
+
+    def get_customer_coordinates(self):
         if not self.address:
             return None
 
-        lon, lat = fetch_coordinates(self.address)
-        return lon, lat
-    
+        coordinates = fetch_coordinates(self.address)
+        if not coordinates:
+            return None
+
+        return coordinates
+
     def calculate_distance_to_restaurant(self, restaurant):
         if not restaurant.latitude or not restaurant.longitude:
             return None
 
-        client_coords = self.get_client_coordinates()
+        client_coords = self.get_customer_coordinates()
         if not client_coords:
             return None
         client_lon, client_lat = client_coords

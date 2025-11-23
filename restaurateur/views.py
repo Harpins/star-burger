@@ -1,5 +1,6 @@
 from django import forms
 from django.shortcuts import redirect, render
+from django.db.models import Prefetch
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
@@ -7,7 +8,13 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, OrderItem
+
+from foodcartapp.utils import fetch_coordinates, calculate_distance
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Login(forms.Form):
@@ -108,21 +115,63 @@ def view_restaurants(request):
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
     orders = Order.objects.filter(status__in=["un", "pr", "sh"]).prefetch_related(
-        "items__product"
-    )
+        Prefetch(
+            "items",
+            queryset=OrderItem.objects.select_related("product")
+        )
+    ).order_by("-created_at")
 
     for order in orders:
         order.total_price = sum(item.get_total_price() for item in order.items.all())
+
+        customer_lon, customer_lat = None, None
+        if order.address:
+            customer_coords = order.get_customer_coordinates()
+            if customer_coords:
+                customer_lon, customer_lat = customer_coords
+
         if order.items.exists():
             restaurant_sets = [
                 set(item.product.available_restaurants()) for item in order.items.all()
             ]
-            order.can_cook_here = (
-                list(set.intersection(*restaurant_sets)) if restaurant_sets else []
-            )
+            possible_restaurants = list(set.intersection(*restaurant_sets)) if restaurant_sets else []
         else:
-            order.can_cook_here = []
+            possible_restaurants = []
 
-    context = {"orders": orders}
+        restaurants_with_distance = []
+        for restaurant in possible_restaurants:
+            if customer_lat is not None and customer_lon is not None and restaurant.latitude and restaurant.longitude:
+                distance = calculate_distance(
+                    customer_lat, customer_lon,
+                    float(restaurant.latitude), float(restaurant.longitude)
+                )
+                distance_rounded = round(distance, 2)
+            else:
+                distance_rounded = None
+
+            restaurants_with_distance.append({
+                "restaurant": restaurant,
+                "distance": distance_rounded,
+            })
+
+        restaurants_with_distance.sort(key=lambda x: (x["distance"] is None, x["distance"]))
+
+        order.can_cook_here = restaurants_with_distance
+
+        if order.cooking_restaurant:
+            if customer_lat is not None and customer_lon is not None and order.cooking_restaurant.latitude and order.cooking_restaurant.longitude:
+                current_distance = calculate_distance(
+                    customer_lat, customer_lon,
+                    float(order.cooking_restaurant.latitude), float(order.cooking_restaurant.longitude)
+                )
+                order.distance_to_current_restaurant = round(current_distance, 2)
+            else:
+                order.distance_to_current_restaurant = None
+        else:
+            order.distance_to_current_restaurant = None
+
+    context = {
+        "orders": orders,
+    }
 
     return render(request, "order_items.html", context)

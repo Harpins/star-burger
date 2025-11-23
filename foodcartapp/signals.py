@@ -1,7 +1,7 @@
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .utils import fetch_coordinates
-from .models import OrderItem, Restaurant
+from .models import OrderItem, Restaurant, Order
 
 @receiver(pre_save, sender=OrderItem)
 def set_price_at_order(sender, instance, **kwargs):
@@ -15,3 +15,4 @@ def auto_fill_restaurant_coordinates(sender, instance, **kwargs):
             coords = fetch_coordinates(instance.address.strip())
             if coords:
                 instance.longitude, instance.latitude = coords
+                
