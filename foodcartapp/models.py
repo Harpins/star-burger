@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
+from .utils import fetch_coordinates, calculate_distance
 
 
 class Restaurant(models.Model):
@@ -15,6 +16,9 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
+    
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота")
 
     class Meta:
         verbose_name = "ресторан"
@@ -97,6 +101,7 @@ class RestaurantMenuItem(models.Model):
         verbose_name="продукт",
     )
     availability = models.BooleanField("в продаже", default=False, db_index=True)
+    
 
     class Meta:
         verbose_name = "пункт меню ресторана"
@@ -148,7 +153,8 @@ class Order(models.Model):
     status = models.CharField(
         max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус"
     )
-
+    
+    
     cooking_restaurant = models.ForeignKey(
         Restaurant,
         verbose_name="Ресторан-исполнитель",
@@ -156,6 +162,10 @@ class Order(models.Model):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
+    )
+    
+    distance_to_restaurant = models.DecimalField(
+        "расстояние до ресторана (км)", max_digits=6, decimal_places=2, null=True, blank=True
     )
 
     commentary = models.TextField(
@@ -173,6 +183,26 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
+    
+    def get_client_coordinates(self):
+        if not self.address:
+            return None
+
+        lon, lat = fetch_coordinates(self.address)
+        return lon, lat
+    
+    def calculate_distance_to_restaurant(self, restaurant):
+        if not restaurant.latitude or not restaurant.longitude:
+            return None
+
+        client_coords = self.get_client_coordinates()
+        if not client_coords:
+            return None
+        client_lon, client_lat = client_coords
+        rest_lat = float(restaurant.latitude)
+        rest_lon = float(restaurant.longitude)
+        distance = calculate_distance(client_lat, client_lon, rest_lat, rest_lon)
+        return distance
 
 
 class OrderItem(models.Model):
