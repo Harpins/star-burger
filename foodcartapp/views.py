@@ -9,7 +9,7 @@ from .serializers import (
     OrderItemCreateSerializer,
     OrderItemResponseSerializer,
 )
-from .models import Product
+from .models import Product, Order
 
 
 def banners_list_api(request):
@@ -77,31 +77,32 @@ def product_list_api(request):
 
 
 @api_view(["POST"])
+@transaction.atomic()
 def register_order(request):
-    try:
-        with transaction.atomic():
-            serializer = OrderCreateSerializer(data=request.data)
-            if not serializer.is_valid():
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = OrderCreateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            order = serializer.save()
+    order = serializer.save()
 
-            response_data = {
-                "id": order.id,
-                "firstname": order.firstname,
-                "lastname": order.lastname,
-                "phonenumber": str(order.phonenumber),
-                "address": order.address,
-                "created_at": order.created_at.isoformat(),
-                "products": OrderItemResponseSerializer(
-                    order.items.all(), many=True, allow_empty=False
-                ).data,
-                "total_cost": sum(item.get_total_price() for item in order.items.all()),
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
-    except Exception as err:
-        print(err)
-        return Response(
-            {"error": str(err)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    order_with_data = (
+        Order.objects
+        .with_total_price()
+        .prefetch_related('items__product')
+        .get(id=order.id)
+    )
+
+    response_data = {
+        "id": order_with_data.id,
+        "firstname": order_with_data.firstname,
+        "lastname": order_with_data.lastname,
+        "phonenumber": str(order_with_data.phonenumber),
+        "address": order_with_data.address,
+        "created_at": order_with_data.created_at.isoformat(),
+        "products": OrderItemResponseSerializer(
+            order_with_data.items.all(), many=True
+        ).data,
+        "total_cost": order_with_data.total_price or 0,
+    }
+
+    return Response(response_data, status=status.HTTP_201_CREATED)

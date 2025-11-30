@@ -10,7 +10,7 @@ from django.contrib.auth import views as auth_views
 
 from foodcartapp.models import Product, Restaurant, Order, OrderItem
 
-from foodcartapp.utils import fetch_coordinates, calculate_distance
+from geolocation.utils import fetch_coordinates, calculate_distance
 
 import logging
 
@@ -114,16 +114,18 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
-    orders = Order.objects.filter(status__in=["un", "pr", "sh"]) \
+    orders = Order.objects.active() \
+        .with_total_price() \
         .prefetch_related(
             Prefetch("items", queryset=OrderItem.objects.select_related("product")),
             "items__product__menu_items__restaurant",
-            "cooking_restaurant__location",          
-        ).select_related("location") \
+            "cooking_restaurant__location",
+        ) \
+        .select_related("location") \
         .order_by("-created_at")
 
     for order in orders:
-        order.total_price = sum(item.get_total_price() for item in order.items.all())
+        order.total_price = order.total_price or 0
 
         if order.location and order.location.latitude and order.location.longitude:
             customer_lat = float(order.location.latitude)

@@ -1,34 +1,30 @@
 from django.db import models
+from django.db.models import Sum, F
 from django.core.validators import MinValueValidator, MaxValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
-from .utils import fetch_coordinates, calculate_distance
+from geolocation.utils import fetch_coordinates, calculate_distance
+from geolocation.models import Location
 
 
-class Location(models.Model):
-    address = models.CharField("полный адрес", max_length=200, unique=True)
-    latitude = models.DecimalField(
-        "широта",
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True,
-    )
-    longitude = models.DecimalField(
-        "долгота",
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True,
-    )
+class OrderQuerySet(models.QuerySet):
+    def with_total_price(self):
+        return self.annotate(
+            total_price=Sum(F("items__quantity") * F("items__fixed_price"))
+        )
 
-    class Meta:
-        verbose_name = "геоточка (адрес + координаты)"
-        verbose_name_plural = "геоточки (адреса с координатами)"
+    def active(self):
+        return self.filter(status__in=["un", "pr", "sh"])
 
-    def __str__(self):
-        if self.latitude is not None and self.longitude is not None:
-            return f"{self.address} ({self.latitude}, {self.longitude})"
-        return f"{self.address} (координаты не определены)"
+
+class OrderManager(models.Manager):
+    def get_queryset(self):
+        return OrderQuerySet(self.model, using=self._db)
+
+    def with_total_price(self):
+        return self.get_queryset().with_total_price()
+
+    def active(self):
+        return self.get_queryset().active()
 
 
 class Restaurant(models.Model):
@@ -39,7 +35,7 @@ class Restaurant(models.Model):
         related_name="restaurant",
         verbose_name="местоположение",
         null=True,
-        blank=True
+        blank=True,
     )
     contact_phone = models.CharField(
         "контактный телефон", max_length=50, blank=True, db_index=True
@@ -202,15 +198,17 @@ class Order(models.Model):
         verbose_name="Тип оплаты",
         db_index=True,
     )
-    
+
     location = models.ForeignKey(
         Location,
         on_delete=models.PROTECT,
         null=True,
         blank=True,
         verbose_name="координаты адреса доставки",
-        related_name='orders'
+        related_name="orders",
     )
+
+    objects = OrderManager()
 
     class Meta:
         verbose_name = "Заказ"
@@ -220,7 +218,6 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
 
-    
     def calculate_distance_to_restaurant(self, restaurant):
         if not restaurant.location or not self.location:
             return None
@@ -266,6 +263,3 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity} (заказ #{self.order.id})"
-
-    def get_total_price(self):
-        return self.quantity * self.fixed_price

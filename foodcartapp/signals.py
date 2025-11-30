@@ -1,7 +1,8 @@
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from .utils import fetch_coordinates
-from .models import OrderItem, Order, Location
+from geolocation.utils import fetch_coordinates
+from .models import OrderItem, Order
+from geolocation.models import Location
 
 
 @receiver(pre_save, sender=OrderItem)

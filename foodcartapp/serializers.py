@@ -1,8 +1,9 @@
 from rest_framework import serializers
-from .models import Location, Order, OrderItem, Product
+from .models import Order, OrderItem, Product
+from geolocation.models import Location
 from phonenumber_field.phonenumber import PhoneNumber
 from django.db import transaction
-from .utils import fetch_coordinates
+from geolocation.utils import fetch_coordinates
 
 
 class ProductSerializer(serializers.ModelSerializer):
