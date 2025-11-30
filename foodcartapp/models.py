@@ -157,7 +157,7 @@ class Order(models.Model):
         Restaurant,
         verbose_name="Ресторан-исполнитель",
         related_name="orders",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
