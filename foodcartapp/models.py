@@ -1,12 +1,14 @@
 from django.db import models
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Prefetch
+from django.db.models.query import QuerySet
 from django.core.validators import MinValueValidator, MaxValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from geolocation.utils import fetch_coordinates, calculate_distance
 from geolocation.models import Location
+from collections import defaultdict
 
 
-class OrderQuerySet(models.QuerySet):
+class OrderQuerySet(QuerySet):
     def with_total_price(self):
         return self.annotate(
             total_price=Sum(F("items__quantity") * F("items__fixed_price"))
@@ -15,16 +17,73 @@ class OrderQuerySet(models.QuerySet):
     def active(self):
         return self.filter(status__in=["un", "pr", "sh"])
 
+    def for_manager_panel(self):
+        return (
+            self.active()
+                .with_total_price()
+                .select_related(
+                    'location',
+                    'cooking_restaurant',
+                    'cooking_restaurant__location'
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "items",
+                        queryset=OrderItem.objects.select_related("product"),
+                        to_attr="prefetched_items"
+                    ),
+                    "items__product__menu_items__restaurant__location",
+                )
+        )
+
 
 class OrderManager(models.Manager):
     def get_queryset(self):
         return OrderQuerySet(self.model, using=self._db)
 
+    def active(self):
+        return self.get_queryset().active()
+
     def with_total_price(self):
         return self.get_queryset().with_total_price()
 
-    def active(self):
-        return self.get_queryset().active()
+    def for_manager_panel(self):
+        orders = list(self.get_queryset().for_manager_panel().order_by('-created_at'))
+
+        if not orders:
+            return orders
+
+        menu_items = list(
+            RestaurantMenuItem.objects.filter(availability=True)
+            .select_related('restaurant')
+            .values('restaurant_id', 'product_id') 
+        )
+
+        restaurant_products = defaultdict(set)
+        for item in menu_items:
+            restaurant_products[item['restaurant_id']].add(item['product_id'])
+
+        restaurant_ids = restaurant_products.keys()
+        restaurants_by_id = {
+            r.id: r for r in Restaurant.objects.filter(id__in=restaurant_ids)
+        }
+
+        for order in orders:
+            order_items = getattr(order, "prefetched_items", [])
+            if not order_items:
+                order.available_restaurants = []
+                continue
+
+            order_product_ids = {item.product_id for item in order_items}
+
+            available = []
+            for rest_id, available_product_ids in restaurant_products.items():
+                if order_product_ids.issubset(available_product_ids):
+                    available.append(restaurants_by_id[rest_id])
+
+            order.available_restaurants = available
+
+        return orders
 
 
 class Restaurant(models.Model):

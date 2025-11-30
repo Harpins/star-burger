@@ -114,69 +114,55 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
-    orders = Order.objects.active() \
-        .with_total_price() \
-        .prefetch_related(
-            Prefetch("items", queryset=OrderItem.objects.select_related("product")),
-            "items__product__menu_items__restaurant",
-            "cooking_restaurant__location",
-        ) \
-        .select_related("location") \
-        .order_by("-created_at")
+    orders = Order.objects.for_manager_panel()
 
     for order in orders:
         order.total_price = order.total_price or 0
 
-        if order.location and order.location.latitude and order.location.longitude:
-            customer_lat = float(order.location.latitude)
-            customer_lon = float(order.location.longitude)
-        else:
-            customer_lat = customer_lon = None
-
-        if order.items.exists():
-            restaurant_sets = [
-                set(item.product.available_restaurants().filter(location__latitude__isnull=False))
-                for item in order.items.all()
-            ]
-            possible_restaurants = list(set.intersection(*restaurant_sets)) if restaurant_sets else []
-        else:
-            possible_restaurants = []
-
+        customer_coords = None
+        if (order.location and
+                order.location.latitude is not None and
+                order.location.longitude is not None):
+            customer_coords = (
+                float(order.location.latitude),
+                float(order.location.longitude)
+            )
+            
         restaurants_with_distance = []
-        for restaurant in possible_restaurants:
+        for restaurant in getattr(order, "available_restaurants", []):
             rest_location = restaurant.location
-            if customer_lat and rest_location and rest_location.latitude and rest_location.longitude:
+            distance = None
+
+            if (customer_coords and rest_location and
+                    rest_location.latitude is not None and
+                    rest_location.longitude is not None):
                 distance = calculate_distance(
-                    customer_lat, customer_lon,
+                    customer_coords[0], customer_coords[1],
                     float(rest_location.latitude),
                     float(rest_location.longitude)
                 )
-                distance_rounded = round(distance, 2)
-            else:
-                distance_rounded = None
+                distance = round(distance, 2)
 
             restaurants_with_distance.append({
                 "restaurant": restaurant,
-                "distance": distance_rounded,
+                "distance": distance,
             })
 
         restaurants_with_distance.sort(key=lambda x: (x["distance"] is None, x["distance"]))
-
         order.can_cook_here = restaurants_with_distance
 
+        order.distance_to_current_restaurant = None
         if order.cooking_restaurant and order.cooking_restaurant.location:
             rest_loc = order.cooking_restaurant.location
-            if customer_lat and rest_loc.latitude and rest_loc.longitude:
-                current_distance = calculate_distance(
-                    customer_lat, customer_lon,
+            if (customer_coords and
+                    rest_loc.latitude is not None and
+                    rest_loc.longitude is not None):
+                dist = calculate_distance(
+                    customer_coords[0], customer_coords[1],
                     float(rest_loc.latitude),
                     float(rest_loc.longitude)
                 )
-                order.distance_to_current_restaurant = round(current_distance, 2)
-            else:
-                order.distance_to_current_restaurant = None
-        else:
-            order.distance_to_current_restaurant = None
+                order.distance_to_current_restaurant = round(dist, 2)
 
     return render(request, "order_items.html", {
         "orders": orders,
