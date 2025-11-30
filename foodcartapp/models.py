@@ -170,9 +170,7 @@ class Order(models.Model):
         blank=True,
     )
 
-    commentary = models.TextField(
-        max_length=500, verbose_name="Комментарий", blank=True, null=True
-    )
+    commentary = models.TextField(verbose_name="Комментарий", blank=True, null=True)
 
     payment_type = models.CharField(
         max_length=4,
