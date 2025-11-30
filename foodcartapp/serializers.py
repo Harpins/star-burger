@@ -51,6 +51,23 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("Заказ должен содержать хотя бы один товар")
         return value
+    
+    def validate_address(self, value):
+        address = str(value).strip()
+        if not address:
+            raise serializers.ValidationError("Адрес не может быть пустым")
+
+        existing = Location.objects.filter(address__iexact=address).first()
+        if existing and existing.latitude is not None:
+            return value
+
+        coords = fetch_coordinates(address)
+        if not coords:
+            raise serializers.ValidationError(
+                "Не удалось определить координаты по этому адресу. "
+                "Пожалуйста, укажите точный и правильный адрес (улица, дом, город)."
+            )
+        return value
 
     def create(self, validated_data):
         with transaction.atomic():
