@@ -34,23 +34,32 @@ def auto_fetch_coordinates(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=Order)
 def auto_fill_order_location(sender, instance, **kwargs):
-    if instance.location:
+    if instance.location_id:  
+        return
+    
+    raw_address = instance.address
+    if not raw_address or not str(raw_address).strip():
+        return
+    
+    address = str(raw_address).strip()
+
+    existing_location = Location.objects.filter(address__iexact=address).first()
+    if existing_location:
+        instance.location = existing_location
         return
 
-    if instance.address.strip():
-        address = instance.address.strip()
+    coords = fetch_coordinates(address)
+    if not coords:
+        instance.location = Location.objects.create(
+            address=address,
+            latitude=None,
+            longitude=None
+        )
+        return
 
-        existing_location = Location.objects.filter(address__iexact=address).first()
-        if existing_location:
-            instance.location = existing_location
-            return
-
-        coords = fetch_coordinates(address)
-        if coords:
-            lon, lat = coords
-            location = Location.objects.create(
-                address=address,
-                latitude=lat,
-                longitude=lon
-            )
-            instance.location = location
+    lon, lat = coords
+    instance.location = Location.objects.create(
+        address=address,
+        latitude=lat,
+        longitude=lon
+    )
