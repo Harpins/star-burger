@@ -4,22 +4,45 @@ from phonenumber_field.modelfields import PhoneNumberField
 from .utils import fetch_coordinates, calculate_distance
 
 
+class Location(models.Model):
+    address = models.CharField("полный адрес", max_length=200, unique=True)
+    latitude = models.DecimalField(
+        "широта",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+    )
+    longitude = models.DecimalField(
+        "долгота",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "геоточка (адрес + координаты)"
+        verbose_name_plural = "геоточки (адреса с координатами)"
+
+    def __str__(self):
+        if self.latitude is not None and self.longitude is not None:
+            return f"{self.address} ({self.latitude}, {self.longitude})"
+        return f"{self.address} (координаты не определены)"
+
+
 class Restaurant(models.Model):
     name = models.CharField("название", max_length=50)
-    address = models.CharField(
-        "адрес",
-        max_length=100,
-        blank=True,
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="restaurant",
+        verbose_name="местоположение",
+        null=True,
+        blank=True
     )
     contact_phone = models.CharField(
         "контактный телефон", max_length=50, blank=True, db_index=True
-    )
-
-    latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта"
-    )
-    longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота"
     )
 
     class Meta:
@@ -179,6 +202,15 @@ class Order(models.Model):
         verbose_name="Тип оплаты",
         db_index=True,
     )
+    
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="координаты адреса доставки",
+        related_name='orders'
+    )
 
     class Meta:
         verbose_name = "Заказ"
@@ -188,23 +220,17 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
 
-    def get_customer_coordinates(self):
-        if not self.address:
-            return None
-        return fetch_coordinates(self.address)
-
+    
     def calculate_distance_to_restaurant(self, restaurant):
-        if not restaurant.latitude or not restaurant.longitude:
+        if not restaurant.location or not self.location:
             return None
 
-        client_coords = self.get_customer_coordinates()
-        if not client_coords:
-            return None
-        client_lon, client_lat = client_coords
-        rest_lat = float(restaurant.latitude)
-        rest_lon = float(restaurant.longitude)
-        distance = calculate_distance(client_lat, client_lon, rest_lat, rest_lon)
-        return distance
+        rest_lat = float(restaurant.location.latitude)
+        rest_lon = float(restaurant.location.longitude)
+        client_lat = float(self.location.latitude)
+        client_lon = float(self.location.longitude)
+
+        return calculate_distance(client_lat, client_lon, rest_lat, rest_lon)
 
 
 class OrderItem(models.Model):
@@ -230,7 +256,7 @@ class OrderItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)],
         verbose_name="Цена на момент заказа",
-        editable=False
+        editable=False,
     )
 
     class Meta:
