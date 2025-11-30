@@ -225,7 +225,7 @@ class OrderItem(models.Model):
         default=1,
     )
 
-    price_at_order = models.DecimalField(
+    fixed_price = models.DecimalField(
         max_digits=8,
         decimal_places=2,
         validators=[MinValueValidator(0)],
@@ -243,4 +243,4 @@ class OrderItem(models.Model):
         return f"{self.product.name} x {self.quantity} (заказ #{self.order.id})"
 
     def get_total_price(self):
-        return self.quantity * self.price_at_order
+        return self.quantity * self.fixed_price

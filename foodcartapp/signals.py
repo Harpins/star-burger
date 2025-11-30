@@ -4,9 +4,9 @@ from .utils import fetch_coordinates
 from .models import OrderItem, Restaurant, Order
 
 @receiver(pre_save, sender=OrderItem)
-def set_price_at_order(sender, instance, **kwargs):
+def set_fixed_price(sender, instance, **kwargs):
     if not instance.pk and instance.product:
-        instance.price_at_order = instance.product.price
+        instance.fixed_price = instance.product.price
         
 @receiver(pre_save, sender=Restaurant)
 def auto_fill_restaurant_coordinates(sender, instance, **kwargs):

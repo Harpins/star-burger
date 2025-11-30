@@ -20,9 +20,9 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     min_num = 1
-    readonly_fields = ["price_at_order"]
+    readonly_fields = ["fixed_price"]
 
-    fields = ["product", "quantity", "price_at_order"]
+    fields = ["product", "quantity", "fixed_price"]
 
 
 class RestaurantMenuItemInline(admin.TabularInline):
@@ -86,7 +86,7 @@ class OrderAdmin(admin.ModelAdmin):
     ]
 
     def get_total_order_price(self, obj):
-        total = obj.items.aggregate(total=Sum(F("quantity") * F("price_at_order")))[
+        total = obj.items.aggregate(total=Sum(F("quantity") * F("fixed_price")))[
             "total"
         ]
         return f"{total} руб." if total else "0 руб."
