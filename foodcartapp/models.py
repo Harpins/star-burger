@@ -12,9 +12,7 @@ class Restaurant(models.Model):
         blank=True,
     )
     contact_phone = models.CharField(
-        "контактный телефон",
-        max_length=50,
-        blank=True,
+        "контактный телефон", max_length=50, blank=True, db_index=True
     )
 
     latitude = models.DecimalField(
@@ -141,20 +139,18 @@ class Order(models.Model):
         auto_now_add=True, verbose_name="Создан", db_index=True
     )
     called_at = models.DateTimeField(
-        editable=True,
-        verbose_name="Время звонка",
-        null=True,
-        blank=True,
+        editable=True, verbose_name="Время звонка", null=True, blank=True, db_index=True
     )
     delivered_at = models.DateTimeField(
-        editable=True,
-        verbose_name="Доставлен",
-        blank=True,
-        null=True,
+        editable=True, verbose_name="Доставлен", blank=True, null=True, db_index=True
     )
 
     status = models.CharField(
-        max_length=2, choices=ORDER_STATUSES, default="un", verbose_name="Статус"
+        max_length=2,
+        choices=ORDER_STATUSES,
+        default="un",
+        verbose_name="Статус",
+        db_index=True,
     )
 
     cooking_restaurant = models.ForeignKey(
