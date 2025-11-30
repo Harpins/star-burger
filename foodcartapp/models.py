@@ -230,8 +230,7 @@ class OrderItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)],
         verbose_name="Цена на момент заказа",
-        editable=False,
-        default=0,
+        editable=False
     )
 
     class Meta:
