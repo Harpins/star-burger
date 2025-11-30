@@ -175,7 +175,11 @@ class Order(models.Model):
     )
 
     payment_type = models.CharField(
-        max_length=4, choices=PAYMENT_TYPES, default="nstd", verbose_name="Тип оплаты"
+        max_length=4,
+        choices=PAYMENT_TYPES,
+        default="nstd",
+        verbose_name="Тип оплаты",
+        db_index=True,
     )
 
     class Meta:
