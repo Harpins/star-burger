@@ -29,7 +29,6 @@ class RestaurantMenuItemInline(admin.TabularInline):
     model = RestaurantMenuItem
     extra = 0
     min_num = 1
-    readonly_fields = ["restaurant", "product", "availability"]
     fields = ["restaurant", "product", "availability"]
 
 
