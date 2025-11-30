@@ -114,25 +114,27 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
-    orders = Order.objects.filter(status__in=["un", "pr", "sh"]).prefetch_related(
-        Prefetch(
-            "items",
-            queryset=OrderItem.objects.select_related("product")
-        )
-    ).order_by("-created_at")
+    orders = Order.objects.filter(status__in=["un", "pr", "sh"]) \
+        .prefetch_related(
+            Prefetch("items", queryset=OrderItem.objects.select_related("product")),
+            "items__product__menu_items__restaurant",
+            "cooking_restaurant__location",          
+        ).select_related("location") \
+        .order_by("-created_at")
 
     for order in orders:
         order.total_price = sum(item.get_total_price() for item in order.items.all())
 
-        customer_lon, customer_lat = None, None
-        if order.address:
-            customer_coords = order.get_customer_coordinates()
-            if customer_coords:
-                customer_lon, customer_lat = customer_coords
+        if order.location and order.location.latitude and order.location.longitude:
+            customer_lat = float(order.location.latitude)
+            customer_lon = float(order.location.longitude)
+        else:
+            customer_lat = customer_lon = None
 
         if order.items.exists():
             restaurant_sets = [
-                set(item.product.available_restaurants()) for item in order.items.all()
+                set(item.product.available_restaurants().filter(location__latitude__isnull=False))
+                for item in order.items.all()
             ]
             possible_restaurants = list(set.intersection(*restaurant_sets)) if restaurant_sets else []
         else:
@@ -140,10 +142,12 @@ def view_orders(request):
 
         restaurants_with_distance = []
         for restaurant in possible_restaurants:
-            if customer_lat is not None and customer_lon is not None and restaurant.latitude and restaurant.longitude:
+            rest_location = restaurant.location
+            if customer_lat and rest_location and rest_location.latitude and rest_location.longitude:
                 distance = calculate_distance(
                     customer_lat, customer_lon,
-                    float(restaurant.latitude), float(restaurant.longitude)
+                    float(rest_location.latitude),
+                    float(rest_location.longitude)
                 )
                 distance_rounded = round(distance, 2)
             else:
@@ -158,11 +162,13 @@ def view_orders(request):
 
         order.can_cook_here = restaurants_with_distance
 
-        if order.cooking_restaurant:
-            if customer_lat is not None and customer_lon is not None and order.cooking_restaurant.latitude and order.cooking_restaurant.longitude:
+        if order.cooking_restaurant and order.cooking_restaurant.location:
+            rest_loc = order.cooking_restaurant.location
+            if customer_lat and rest_loc.latitude and rest_loc.longitude:
                 current_distance = calculate_distance(
                     customer_lat, customer_lon,
-                    float(order.cooking_restaurant.latitude), float(order.cooking_restaurant.longitude)
+                    float(rest_loc.latitude),
+                    float(rest_loc.longitude)
                 )
                 order.distance_to_current_restaurant = round(current_distance, 2)
             else:
@@ -170,8 +176,6 @@ def view_orders(request):
         else:
             order.distance_to_current_restaurant = None
 
-    context = {
+    return render(request, "order_items.html", {
         "orders": orders,
-    }
-
-    return render(request, "order_items.html", context)
+    })

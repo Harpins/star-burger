@@ -7,6 +7,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Sum, F
 
 from .models import (
+    Location,
     Product,
     ProductCategory,
     Restaurant,
@@ -31,6 +32,17 @@ class RestaurantMenuItemInline(admin.TabularInline):
     min_num = 1
     fields = ["restaurant", "product", "availability"]
 
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = [
+        "address",
+        "latitude",
+        "longitude"
+        
+    ]
+    search_fields = [
+        "address",
+    ]
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -159,6 +171,7 @@ class RestaurantAdmin(admin.ModelAdmin):
 
     list_display = ["name", "contact_phone", "location"]
     inlines = [RestaurantMenuItemInline]
+
 
    
 
