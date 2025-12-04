@@ -22,7 +22,7 @@ class OrderQuerySet(QuerySet):
             self.active()
             .with_total_price()
             .select_related(
-                "location", "cooking_restaurant", "cooking_restaurant__location"
+                "cooking_restaurant",
             )
             .prefetch_related(
                 Prefetch(
@@ -30,7 +30,6 @@ class OrderQuerySet(QuerySet):
                     queryset=OrderItem.objects.select_related("product"),
                     to_attr="prefetched_items",
                 ),
-                "items__product__menu_items__restaurant__location",
             )
         )
 

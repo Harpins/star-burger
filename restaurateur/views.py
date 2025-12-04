@@ -114,55 +114,7 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
-    orders = Order.objects.for_manager_panel()
-
-    for order in orders:
-        order.total_price = order.total_price or 0
-
-        customer_coords = None
-        if (order.location and
-                order.location.latitude is not None and
-                order.location.longitude is not None):
-            customer_coords = (
-                float(order.location.latitude),
-                float(order.location.longitude)
-            )
-            
-        restaurants_with_distance = []
-        for restaurant in getattr(order, "available_restaurants", []):
-            rest_location = restaurant.location
-            distance = None
-
-            if (customer_coords and rest_location and
-                    rest_location.latitude is not None and
-                    rest_location.longitude is not None):
-                distance = calculate_distance(
-                    customer_coords[0], customer_coords[1],
-                    float(rest_location.latitude),
-                    float(rest_location.longitude)
-                )
-                distance = round(distance, 2)
-
-            restaurants_with_distance.append({
-                "restaurant": restaurant,
-                "distance": distance,
-            })
-
-        restaurants_with_distance.sort(key=lambda x: (x["distance"] is None, x["distance"]))
-        order.can_cook_here = restaurants_with_distance
-
-        order.distance_to_current_restaurant = None
-        if order.cooking_restaurant and order.cooking_restaurant.location:
-            rest_loc = order.cooking_restaurant.location
-            if (customer_coords and
-                    rest_loc.latitude is not None and
-                    rest_loc.longitude is not None):
-                dist = calculate_distance(
-                    customer_coords[0], customer_coords[1],
-                    float(rest_loc.latitude),
-                    float(rest_loc.longitude)
-                )
-                order.distance_to_current_restaurant = round(dist, 2)
+    orders = Order.objects.for_manager_panel()      
 
     return render(request, "order_items.html", {
         "orders": orders,
