@@ -153,11 +153,11 @@ class OrderAdmin(admin.ModelAdmin):
 class RestaurantAdmin(admin.ModelAdmin):
     search_fields = [
         "name",
-        "location",
+        "address",
         "contact_phone",
     ]
 
-    list_display = ["name", "contact_phone", "location"]
+    list_display = ["name", "contact_phone", "address"]
     inlines = [RestaurantMenuItemInline]
 
 

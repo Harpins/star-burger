@@ -5,5 +5,4 @@ class FoodcartappConfig(AppConfig):
     default_auto_field = 'django.db.models.AutoField'
     name = 'foodcartapp'
 
-    def ready(self):
-        import foodcartapp.signals
+   

@@ -20,20 +20,18 @@ class OrderQuerySet(QuerySet):
     def for_manager_panel(self):
         return (
             self.active()
-                .with_total_price()
-                .select_related(
-                    'location',
-                    'cooking_restaurant',
-                    'cooking_restaurant__location'
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "items",
-                        queryset=OrderItem.objects.select_related("product"),
-                        to_attr="prefetched_items"
-                    ),
-                    "items__product__menu_items__restaurant__location",
-                )
+            .with_total_price()
+            .select_related(
+                "location", "cooking_restaurant", "cooking_restaurant__location"
+            )
+            .prefetch_related(
+                Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related("product"),
+                    to_attr="prefetched_items",
+                ),
+                "items__product__menu_items__restaurant__location",
+            )
         )
 
 
@@ -48,20 +46,20 @@ class OrderManager(models.Manager):
         return self.get_queryset().with_total_price()
 
     def for_manager_panel(self):
-        orders = list(self.get_queryset().for_manager_panel().order_by('-created_at'))
+        orders = list(self.get_queryset().for_manager_panel().order_by("-created_at"))
 
         if not orders:
             return orders
 
         menu_items = list(
             RestaurantMenuItem.objects.filter(availability=True)
-            .select_related('restaurant')
-            .values('restaurant_id', 'product_id') 
+            .select_related("restaurant")
+            .values("restaurant_id", "product_id")
         )
 
         restaurant_products = defaultdict(set)
         for item in menu_items:
-            restaurant_products[item['restaurant_id']].add(item['product_id'])
+            restaurant_products[item["restaurant_id"]].add(item["product_id"])
 
         restaurant_ids = restaurant_products.keys()
         restaurants_by_id = {
@@ -88,14 +86,7 @@ class OrderManager(models.Manager):
 
 class Restaurant(models.Model):
     name = models.CharField("название", max_length=50)
-    location = models.ForeignKey(
-        Location,
-        on_delete=models.PROTECT,
-        related_name="restaurant",
-        verbose_name="местоположение",
-        null=True,
-        blank=True,
-    )
+    address = models.TextField(verbose_name="Адрес")
     contact_phone = models.CharField(
         "контактный телефон", max_length=50, blank=True, db_index=True
     )
@@ -240,15 +231,7 @@ class Order(models.Model):
         blank=True,
     )
 
-    distance_to_restaurant = models.DecimalField(
-        "расстояние до ресторана (км)",
-        max_digits=6,
-        decimal_places=2,
-        null=True,
-        blank=True,
-    )
-
-    commentary = models.TextField(verbose_name="Комментарий", blank=True, null=True)
+    commentary = models.TextField(verbose_name="Комментарий", blank=True)
 
     payment_type = models.CharField(
         max_length=4,
@@ -256,15 +239,6 @@ class Order(models.Model):
         default="nstd",
         verbose_name="Тип оплаты",
         db_index=True,
-    )
-
-    location = models.ForeignKey(
-        Location,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        verbose_name="координаты адреса доставки",
-        related_name="orders",
     )
 
     objects = OrderManager()
@@ -277,16 +251,6 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} {self.phonenumber}"
 
-    def calculate_distance_to_restaurant(self, restaurant):
-        if not restaurant.location or not self.location:
-            return None
-
-        rest_lat = float(restaurant.location.latitude)
-        rest_lon = float(restaurant.location.longitude)
-        client_lat = float(self.location.latitude)
-        client_lon = float(self.location.longitude)
-
-        return calculate_distance(client_lat, client_lon, rest_lat, rest_lon)
 
 
 class OrderItem(models.Model):
