@@ -29,29 +29,43 @@
       <tr>
         <td>{{ order.id }}</td>
         <td>{{ order.get_status_display }}</td>
-        <td>{{ order.get_payment_type_display|default:"—"}}
-        <td>{{ order.total_price|floatformat:2 }}</td>
+        <td>{{ order.get_payment_type_display|default:"—" }}</td>
+        <td>{{ order.total_price|floatformat:2 }} ₽</td>
         <td>{{ order.firstname }} {{ order.lastname }}</td>
         <td>{{ order.phonenumber }}</td>
         <td>{{ order.address }}</td>
-        <td>{{ order.commentary|default:"—"}}</td>
+        <td>{{ order.commentary|default:"—" }}</td>
+
         <td>
           {% if order.cooking_restaurant %}
             <strong style="color: green;">
-              Готовится: {{ order.cooking_restaurant.name }}
-              {% if order.distance_to_current_restaurant is not None %}
-                ({{ order.distance_to_current_restaurant }} км)
-              {% endif %}
+              Готовится в «{{ order.cooking_restaurant.name }}»
             </strong>
 
-          {% elif order.can_cook_here %}
-            Может быть приготовлен:
+          {% elif order.restaurant_distances %}
+            <strong style="color: #e67e22;">Может приготовить:</strong>
             <details>
-              {% for entry in order.can_cook_here %}
-                <div>
-                  {{ entry.restaurant.name }}
+              <summary style="cursor: pointer; margin: 4px 0;">
+                {{ order.restaurant_distances|length }}
+                {% if order.restaurant_distances|length == 1 %}
+                  ресторан
+                {% else %}
+                  ресторанов
+                {% endif %}
+                {% with first=order.restaurant_distances.0 %}
+                  {% if first.distance is not None %}
+                    — ближайший {{ first.distance }} км
+                  {% endif %}
+                {% endwith %}
+              </summary>
+
+              {% for entry in order.restaurant_distances %}
+                <div style="margin: 2px 0 2px 16px;">
+                  • {{ entry.restaurant.name }}
                   {% if entry.distance is not None %}
-                    — {{ entry.distance }} км
+                    — <strong>{{ entry.distance }} км</strong>
+                  {% else %}
+                    — <em>расстояние неизвестно</em>
                   {% endif %}
                 </div>
               {% endfor %}
@@ -61,8 +75,10 @@
             <strong style="color: red;">Нет доступных ресторанов</strong>
           {% endif %}
         </td>
+
         <td>
-          <a href="{% url 'admin:foodcartapp_order_change' order.id %}?next={{ request.get_full_path|urlencode }}">
+          <a href="{% url 'admin:foodcartapp_order_change' order.id %}?next={{ request.get_full_path|urlencode }}"
+            class="btn btn-sm btn-outline-primary">
             Редактировать
           </a>
         </td>

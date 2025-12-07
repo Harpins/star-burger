@@ -99,6 +99,24 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("items", "items__product")
+    
+    def save_formset(self, request, form, formset, change):
+        if formset.model == OrderItem:
+            instances = formset.save(commit=False)
+            
+            for instance in instances:
+                if not instance.pk:
+                    if instance.product:
+                        instance.fixed_price = instance.product.price
+                
+                instance.save()
+            
+            for obj in formset.deleted_objects:
+                obj.delete()
+            
+            formset.save_m2m()
+        else:
+            super().save_formset(request, form, formset, change)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "cooking_restaurant":
@@ -160,8 +178,6 @@ class RestaurantAdmin(admin.ModelAdmin):
     list_display = ["name", "contact_phone", "address"]
     inlines = [RestaurantMenuItemInline]
 
-
-   
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):

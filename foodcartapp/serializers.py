@@ -52,52 +52,62 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Заказ должен содержать хотя бы один товар")
         return value
     
-    def validate_address(self, value):
-        address = str(value).strip()
+    def validate(self, data):
+        address = str(data["address"]).strip()
         if not address:
-            raise serializers.ValidationError("Адрес не может быть пустым")
+            raise serializers.ValidationError({"address": "Адрес не может быть пустым"})
 
-        existing = Location.objects.filter(address__iexact=address).first()
-        if existing and existing.latitude is not None:
-            return value
+        location = Location.objects.filter(address__iexact=address).first()
+        if location and location.latitude is not None and location.longitude is not None:
+            data["_location_cache"] = location
+            return data
 
         coords = fetch_coordinates(address)
         if not coords:
-            raise serializers.ValidationError(
-                "Не удалось определить координаты по этому адресу. "
-                "Пожалуйста, укажите точный и правильный адрес (улица, дом, город)."
-            )
-        return value
+            raise serializers.ValidationError({
+                "address": "Не удалось определить координаты по адресу. Укажите точный адрес."
+            })
 
+        data["_location_cache"] = None  
+        data["_coordinates"] = coords
+        data["address"] = address 
+        return data
+
+    @transaction.atomic
     def create(self, validated_data):
-        with transaction.atomic():
-            items_data = validated_data.pop("products")
-            order = Order.objects.create(**validated_data)
-            address = order.address.strip()
-            if address:
-                location, created = Location.objects.get_or_create(
-                    address__iexact=address,
-                    defaults={'address': address}
-                )
-                if created:
-                    coords = fetch_coordinates(address)
-                    if coords:
-                        lon, lat = coords
-                        location.longitude = lon
-                        location.latitude = lat
-                        location.save()
-                order.location = location
-                order.save(update_fields=['location'])  
-            
-            order_items = [
-                OrderItem(
-                    order=order,
-                    product=item["product_id"],
-                    quantity=item["quantity"],
-                    fixed_price=item["product_id"].price,
-                )
-                for item in items_data
-            ]
-            OrderItem.objects.bulk_create(order_items)
+        validated_data.pop("_location_cache", None)
+        validated_data.pop("_coordinates", None)
+        items_data = validated_data.pop("products")
+        address = validated_data["address"]
 
-            return order
+        order = Order.objects.create(**validated_data)
+
+        location_cache = validated_data.get("_location_cache")
+        if location_cache:
+            pass
+        else:
+            coords = validated_data.get("_coordinates")
+            if coords:
+                lon, lat = coords
+                Location.objects.update_or_create(
+                    address__iexact=address,
+                    defaults={
+                        "address": address,
+                        "latitude": lat,
+                        "longitude": lon,
+                    }
+                )
+
+        order_items = []
+        for item in items_data:
+            product = item["product_id"] 
+            order_items.append(OrderItem(
+                order=order,
+                product=product,
+                quantity=item["quantity"],
+                fixed_price=product.price, 
+            ))
+
+        OrderItem.objects.bulk_create(order_items)
+
+        return order

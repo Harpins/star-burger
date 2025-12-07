@@ -3,8 +3,6 @@ from django.db.models import Sum, F, Prefetch
 from django.db.models.query import QuerySet
 from django.core.validators import MinValueValidator, MaxValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
-from geolocation.utils import fetch_coordinates, calculate_distance
-from geolocation.models import Location
 from collections import defaultdict
 
 
@@ -62,7 +60,7 @@ class OrderManager(models.Manager):
 
         restaurant_ids = restaurant_products.keys()
         restaurants_by_id = {
-            r.id: r for r in Restaurant.objects.filter(id__in=restaurant_ids)
+            restaurant.id: restaurant for restaurant in Restaurant.objects.filter(id__in=restaurant_ids)
         }
 
         for order in orders:
@@ -276,6 +274,7 @@ class OrderItem(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Цена на момент заказа",
         editable=False,
+        blank=True,
     )
 
     class Meta:

@@ -8,8 +8,9 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-from foodcartapp.models import Product, Restaurant, Order, OrderItem
+from foodcartapp.models import Product, Restaurant, Order
 
+from geolocation.models import Location
 from geolocation.utils import fetch_coordinates, calculate_distance
 
 import logging
@@ -75,6 +76,49 @@ def is_manager(user):
     )
 
 
+def normalize_address(address):
+    if not address:
+        return ""
+    return address.strip().lower()
+
+
+def get_or_create_locations(addresses):
+    if not addresses:
+        return {}
+
+    unique_addresses = {
+        normalize_address(addr)
+        for addr in addresses
+        if addr and normalize_address(addr)
+    }
+    if not unique_addresses:
+        return {}
+
+    existing_locations = Location.objects.filter(address__in=unique_addresses)
+    location_by_address = {
+        loc.address: (loc.latitude, loc.longitude) for loc in existing_locations
+    }
+
+    missing_addresses = unique_addresses - location_by_address.keys()
+
+    if missing_addresses:
+        for address in missing_addresses:
+            coordinates = fetch_coordinates(address)
+            if coordinates:
+                lat, lon = coordinates
+                location, created = Location.objects.get_or_create(
+                    address=address, defaults={"latitude": lat, "longitude": lon}
+                )
+                location_by_address[address] = (location.latitude, location.longitude)
+            else:
+                location_by_address[address] = None
+
+    for addr in unique_addresses:
+        location_by_address.setdefault(addr, None)
+
+    return location_by_address
+
+
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_products(request):
     restaurants = list(Restaurant.objects.order_by("name"))
@@ -114,8 +158,49 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url="restaurateur:login")
 def view_orders(request):
-    orders = Order.objects.for_manager_panel()      
+    orders = Order.objects.for_manager_panel()
+    if not orders:
+        return render(request, "order_items.html", {"orders": []})
+    order_addresses = [order.address for order in orders if order.address.strip()]
+    restaurant_addresses = list(
+        Restaurant.objects.exclude(address__exact="")
+        .values_list("address", flat=True)
+        .distinct()
+    )
 
-    return render(request, "order_items.html", {
-        "orders": orders,
-    })
+    all_addresses = set(order_addresses + restaurant_addresses)
+    coordinates_by_address = get_or_create_locations(all_addresses)
+
+    for order in orders:
+        normalized_addr = normalize_address(order.address)
+        order_coords = coordinates_by_address.get(normalized_addr)
+        if not order_coords:
+            order.restaurant_distances = []
+            continue
+        distances = []
+        for restaurant in order.available_restaurants:
+            rest_normalized = normalize_address(restaurant.address)
+            rest_coords = coordinates_by_address.get(rest_normalized)
+
+            if rest_coords:
+                distance = round(calculate_distance(order_coords, rest_coords), 2)
+            else:
+                distance = None
+
+            distances.append(
+                {
+                    "restaurant": restaurant,
+                    "distance": distance,
+                }
+            )
+
+        distances.sort(key=lambda x: (x["distance"] is None, x["distance"]))
+        order.restaurant_distances = distances
+
+    return render(
+        request,
+        "order_items.html",
+        {
+            "orders": orders,
+        },
+    )

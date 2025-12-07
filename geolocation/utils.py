@@ -81,5 +81,10 @@ def fetch_coordinates(address: str):
         return None
 
 
-def calculate_distance(lat1, lon1, lat2, lon2):
-    return round(geodesic((lat1, lon1), (lat2, lon2)).km, 2)
+def calculate_distance(coord1: tuple, coord2: tuple) -> float | None:
+    if None in (coord1, coord2) or coord1 is None or coord2 is None:
+        return None
+    try:
+        return round(geodesic(coord1, coord2).kilometers, 2)
+    except Exception:
+        return None
