@@ -1,5 +1,5 @@
 import os
-
+import rollbar
 import dj_database_url
 
 from environs import Env
@@ -14,7 +14,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 YA_API_KEY = env('YA_API_KEY')
 
 SECRET_KEY = env('SECRET_KEY')
-DEBUG = env.bool('DEBUG', True)
+DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
@@ -57,7 +57,22 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
+
+
+ROLLBAR_TOKEN = env("ROLLBAR_TOKEN")
+ROLLBAR_ENABLED = env.bool("ROLLBAR_ENABLED", default=False)
+
+ROLLBAR = {
+    "access_token": ROLLBAR_TOKEN,
+    "environment": "development" if DEBUG else "production",
+    "code_version": "1.0",
+    "root": BASE_DIR,
+    "enabled": ROLLBAR_ENABLED,
+}
+
+rollbar.init(**ROLLBAR)
 
 ROOT_URLCONF = 'star_burger.urls'
 
@@ -99,10 +114,22 @@ WSGI_APPLICATION = 'star_burger.wsgi.application'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
+
+POSTGRES_PASSWORD = env("POSTGRES_PASSWORD")
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:////{0}'.format(os.path.join(BASE_DIR, 'db.sqlite3'))
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'starburger',
+        'USER': 'burger_deploy',
+        'PASSWORD': POSTGRES_PASSWORD,
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+        'CONN_MAX_AGE': 600,
+    },
+    'old_sqlite': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -141,3 +168,21 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "assets"),
     os.path.join(BASE_DIR, "bundles"),
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'rollbar': {
+            'level': 'ERROR',
+            'class': 'rollbar.logger.RollbarHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['rollbar'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

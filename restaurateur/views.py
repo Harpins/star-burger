@@ -204,3 +204,4 @@ def view_orders(request):
             "orders": orders,
         },
     )
+
