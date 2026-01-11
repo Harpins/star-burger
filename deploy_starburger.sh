@@ -3,7 +3,7 @@
 # deploy_starburger.sh — автоматический деплой star-burger
 # Запуск: ./deploy_starburger.sh
 
-set -e
+set -e  # Остановка при любой ошибке
 
 PROJECT_DIR="/var/www/star-burger"
 BRANCH="master"
@@ -17,52 +17,42 @@ cd "$PROJECT_DIR"
 echo "1. Обновление кода из репозитория ($BRANCH)..."
 git fetch origin
 git checkout "$BRANCH"
-git pull origin "$BRANCH"
+git reset --hard origin/"$BRANCH"
+git clean -fd  
 
-echo "2. Проверка на важные несохранённые изменения"
-echo "   (игнорируем staticfiles/ и bundles/)..."
+echo "Код обновлён до версии $(git rev-parse --short HEAD)"
 
-if git diff --quiet -- . ':!staticfiles/' ':!bundles/' && \
-   git diff --cached --quiet -- . ':!staticfiles/' ':!bundles/' && \
-   [ -z "$(git ls-files --others --exclude-standard | grep -vE '^(staticfiles|bundles)/')" ]; then
-    echo "   Репозиторий чист — продолжаем деплой."
-else
-    echo "ОШИБКА: Обнаружены несохранённые изменения вне staticfiles/ и bundles/"
-    git status
-    echo "Зафиксируйте или откатите изменения перед деплоем."
-    exit 1
-fi
-
-echo "3. Установка/обновление Node.js библиотек..."
+echo "2. Установка/обновление Node.js библиотек..."
 npm ci
 
-echo "4. Пересборка JS-кода (Parcel) и перезапуск сервиса..."
-sudo systemctl restart parcel-watch
+echo "3. Пересборка JS-кода (Parcel)..."
 npm run build
+sudo systemctl restart parcel-watch
 
-echo "5. Установка/обновление Python-библиотек..."
+
+echo "4. Установка/обновление Python-библиотек..."
 source venv/bin/activate
 pip install --break-system-packages -r requirements.txt
 deactivate
 
-echo "6. Применение миграций Django и сбор static..."
+echo "5. Применение миграций и сбор статики..."
 source venv/bin/activate
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput --clear
 deactivate
 
-echo "7. Перезапуск сервисов..."
+echo "6. Перезапуск основных сервисов..."
 sudo systemctl restart gunicorn
 sudo systemctl reload nginx
 
-echo "8. Уведомление Rollbar о деплое..."
+echo "7. Уведомление Rollbar о деплое..."
 
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
 if [ -z "$ROLLBAR_TOKEN" ]; then
-    echo "Предупреждение: ROLLBAR_TOKEN не найден — Rollbar пропущен."
+    echo "   Предупреждение: ROLLBAR_TOKEN не найден — уведомление пропущено."
 else
     COMMIT_HASH=$(git rev-parse HEAD)
     SHORT_HASH=$(git rev-parse --short HEAD)
@@ -74,13 +64,13 @@ else
         -F "local_username=burger_deploy")
 
     if echo "$RESPONSE" | grep -q '"status":"success"'; then
-        echo "Rollbar уведомлён (коммит $SHORT_HASH)"
+        echo "   Rollbar уведомлён (коммит $SHORT_HASH)"
     else
-        echo "Ошибка Rollbar:"
-        echo "$RESPONSE"
+        echo "   Ошибка уведомления Rollbar:"
+        echo "   $RESPONSE"
     fi
 fi
 
 echo "========================================"
-echo "       Деплой успешно завершён!         "
+echo "       Деплой успешно завершён!"
 echo "========================================"
