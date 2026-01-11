@@ -1,1 +1,20 @@
-{}
+{
+  "dependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.16.7",
+    "@babel/preset-react": "^7.16.7",
+    "core-js": "^3.21.1",
+    "lodash": "^4.17.21",
+    "parcel": "^2.4.0",
+    "react": "^17.0.2",
+    "react-bootstrap": "^0.33.1",
+    "react-dom": "^17.0.2",
+    "react-transition-group": "^4.4.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.8"
+  },
+  "scripts": {
+    "dev": "./node_modules/.bin/parcel watch bundles-src/index.js --dist-dir bundles --public-url=./",
+    "build": "./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url=./ --no-source-maps"
+  }
+}
