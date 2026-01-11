@@ -48,6 +48,32 @@ echo "6. Перезапуск сервисов..."
 sudo systemctl restart gunicorn
 sudo systemctl reload nginx
 
+echo "7. Уведомление Rollbar о деплое..."
+
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+if [ -z "$ROLLBAR_TOKEN" ]; then
+    echo "Предупреждение: ROLLBAR_TOKEN не найден в .env — уведомление Rollbar пропущено."
+else
+    COMMIT_HASH=$(git rev-parse HEAD)
+    SHORT_HASH=$(git rev-parse --short HEAD)
+
+    RESPONSE=$(curl -s -X POST "https://api.rollbar.com/api/1/deploy" \
+        -F "access_token=$ROLLBAR_TOKEN" \
+        -F "environment=production" \
+        -F "revision=$COMMIT_HASH" \
+        -F "local_username=burger_deploy")
+
+    if echo "$RESPONSE" | grep -q '"status":"success"'; then
+        echo "Rollbar успешно уведомлён о деплое (коммит $SHORT_HASH)"
+    else
+        echo "Ошибка при уведомлении Rollbar:"
+        echo "$RESPONSE"
+    fi
+fi
+
 echo "========================================"
 echo "       Деплой успешно завершён!         "
 echo "========================================"
