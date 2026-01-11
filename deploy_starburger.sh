@@ -63,13 +63,7 @@ else
         -F "revision=$COMMIT_HASH" \
         -F "local_username=burger_deploy")
 
-    if echo "$RESPONSE" | grep -q '"deploy_id"'; then
-        DEPLOY_ID=$(echo "$RESPONSE" | grep -o '"deploy_id":[0-9]*' | cut -d: -f2)
-        echo "   Rollbar успешно уведомлён о деплое (коммит $SHORT_HASH, deploy_id: $DEPLOY_ID)"
-    else
-        echo "   Ошибка уведомления Rollbar:"
-        echo "   $RESPONSE"
-    fi
+    echo "   $RESPONSE"
 fi
 
 echo "========================================"
