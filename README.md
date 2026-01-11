@@ -54,19 +54,14 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Определите переменную окружения `SECRET_KEY`. Создать файл `.env` в каталоге `star_burger/` и положите туда такой код:
-```sh
-SECRET_KEY=django-insecure-0if40nf4nf93n4
-```
+Создайте файл .env в каталоге star_burger/ и добавьте в него необходимые переменные (см. раздел "Переменные окружения").
 
-Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
-
+Выполните миграции:
 ```sh
 python manage.py migrate
 ```
 
 Запустите сервер:
-
 ```sh
 python manage.py runserver
 ```
@@ -134,20 +129,74 @@ Parcel будет следить за файлами в каталоге `bundle
 **Сбросьте кэш браузера <kbd>Ctrl-F5</kbd>.** Браузер при любой возможности старается кэшировать файлы статики: CSS, картинки и js-код. Порой это приводит к странному поведению сайта, когда код уже давно изменился, но браузер этого не замечает и продолжает использовать старую закэшированную версию. В норме Parcel решает эту проблему самостоятельно. Он следит за пересборкой фронтенда и предупреждает JS-код в браузере о необходимости подтянуть свежий код. Но если вдруг что-то у вас идёт не так, то начните ремонт со сброса браузерного кэша, жмите <kbd>Ctrl-F5</kbd>.
 
 
-## Как запустить prod-версию сайта
+## Production-деплой (Nginx + Gunicorn + PostgreSQL)
 
+Проект размещён в /var/www/star-burger
+
+### Требования:
+Ubuntu (рекомендуется 22.04 или 24.04)
+Python 3.12
+Node.js 16.16+
+PostgreSQL
+Nginx
+Gunicorn
+
+### Установка зависимостей и сервисов
+
+```sh
+sudo apt update
+sudo apt install python3 python3-venv python3-dev libpq-dev postgresql nginx -y
+```
 Собрать фронтенд:
 
 ```sh
 ./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
 ```
 
-Настроить бэкенд: создать файл `.env` в каталоге `star_burger/` со следующими настройками:
+### Настройка PostgreSQL
+(Подробности в документации проекта)
 
-- `DEBUG` — дебаг-режим. Поставьте `False`.
-- `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
-- `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/5.2/ref/settings/#allowed-hosts)
-- `YA_API_KEY` — [Токен геокодера](https://developer.tech.yandex.ru/services) 
+
+### Переменные окружения
+
+Создайте файл `/var/www/star-burger/.env`:
+
+- SECRET_KEY=ваш_секретный_ключ_Джанго
+- YA_API_KEY= [Токен геокодера](https://developer.tech.yandex.ru/services) 
+- ALLOWED_HOSTS=ваши_ip_и_домены [см. документацию Django](https://docs.djangoproject.com/en/5.2/ref/settings/#allowed-hosts)
+- DEBUG=False
+- ROLLBAR_TOKEN=ваш_rollbar_post_server_item_токен
+- ROLLBAR_ENABLED=True
+- POSTGRES_PASSWORD=сильный_пароль_для_postgres
+- CSRF_TRUSTED_ORIGINS=https://ваш_домен1.ru,https://ваш_домен2.ru
+
+## Автоматический деплой
+Для обновления сайта используйте готовый скрипт:
+
+```sh
+cd /var/www/star-burger
+./deploy_starburger.sh
+```
+Скрипт выполняет:
+
+1. Обновление кода из репозитория
+2. Установку библиотек (Python и Node.js)
+3. Пересборку фронтенда (Parcel)
+4. Пересборку статики Django
+5. Применение миграций
+6. Перезапуск Gunicorn и graceful reload Nginx
+7. Сообщение об успешном завершении
+
+Nginx не останавливается — используется systemctl reload nginx (zero-downtime).
+
+## Сервисы
+
+Установите Certbot и получите сертификат:
+
+```sh
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d your_domen.ru -d www.your_domen.ru
+```
 
 ## Цели проекта
 
