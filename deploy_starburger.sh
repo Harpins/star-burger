@@ -19,10 +19,13 @@ git fetch origin
 git checkout $BRANCH
 git pull origin $BRANCH
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "ОШИБКА: Обнаружены несохранённые изменения!"
+if git diff --quiet && git diff --cached --quiet && \
+   git ls-files --others --exclude-standard --directory | grep -q -v '^staticfiles/' | grep -q -v '^bundles/'; then
+    echo "Нет несохранённых изменений — продолжаем."
+else
+    echo "ОШИБКА: Обнаружены несохранённые изменения (кроме staticfiles/ и bundles/):"
     git status
-    echo "Зафиксируйте или откатите изменения перед деплоем."
+    echo "Зафиксируйте или откатите важные изменения перед деплоем."
     exit 1
 fi
 
