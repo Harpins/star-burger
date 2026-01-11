@@ -21,15 +21,14 @@ git pull origin $BRANCH
 
 echo "Проверка на важные несохранённые изменения (игнорируем staticfiles/ и bundles/)..."
 
-if git diff --cached --quiet && \
-   git diff --quiet && \
+if git diff --quiet -- . ':!staticfiles/' ':!bundles/' && \
+   git diff --cached --quiet -- . ':!staticfiles/' ':!bundles/' && \
    [ -z "$(git ls-files --others --exclude-standard | grep -vE '^(staticfiles|bundles)/')" ]; then
     echo "   Нет важных изменений — продолжаем деплой."
 else
     echo "ОШИБКА: Обнаружены несохранённые изменения вне staticfiles/ и bundles/!"
-    echo "Или изменения в важных файлах."
     git status
-    echo "Зафиксируйте, откатите или добавьте файлы в .gitignore."
+    echo "Зафиксируйте или откатите эти изменения перед деплоем."
     exit 1
 fi
 
