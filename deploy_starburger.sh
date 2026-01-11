@@ -3,7 +3,7 @@
 # deploy_starburger.sh — автоматический деплой star-burger
 # Запуск: ./deploy_starburger.sh
 
-set -e  # Остановка при любой ошибке
+set -e 
 
 PROJECT_DIR="/var/www/star-burger"
 BRANCH="master"
@@ -52,7 +52,7 @@ if [ -f .env ]; then
 fi
 
 if [ -z "$ROLLBAR_TOKEN" ]; then
-    echo "   Предупреждение: ROLLBAR_TOKEN не найден — уведомление пропущено."
+    echo "   Предупреждение: ROLLBAR_TOKEN не найден в .env — уведомление пропущено."
 else
     COMMIT_HASH=$(git rev-parse HEAD)
     SHORT_HASH=$(git rev-parse --short HEAD)
@@ -63,8 +63,9 @@ else
         -F "revision=$COMMIT_HASH" \
         -F "local_username=burger_deploy")
 
-    if echo "$RESPONSE" | grep -q '"status":"success"'; then
-        echo "   Rollbar уведомлён (коммит $SHORT_HASH)"
+    if echo "$RESPONSE" | grep -q '"deploy_id"'; then
+        DEPLOY_ID=$(echo "$RESPONSE" | grep -o '"deploy_id":[0-9]*' | cut -d: -f2)
+        echo "   Rollbar успешно уведомлён о деплое (коммит $SHORT_HASH, deploy_id: $DEPLOY_ID)"
     else
         echo "   Ошибка уведомления Rollbar:"
         echo "   $RESPONSE"
