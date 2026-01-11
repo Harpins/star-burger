@@ -30,8 +30,8 @@ echo "2. Установка/обновление Node.js библиотек..."
 npm ci
 
 echo "3. Пересборка JS-кода (Parcel) и перезапуск сервиса сборки фронтенда... "
-npm run build
 sudo systemctl restart parcel-watch
+npm run build
 
 echo "4. Установка/обновление Python-библиотек..."
 source venv/bin/activate
