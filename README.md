@@ -145,7 +145,7 @@ Gunicorn
 
 ```sh
 sudo apt update
-sudo apt install python3 python3-venv python3-dev libpq-dev postgresql nginx -y
+sudo apt install python3 python3-venv python3-dev build-essential libpq-dev postgresql nginx -y
 ```
 Собрать фронтенд:
 
