@@ -1,19 +1,19 @@
 import os
 import rollbar
-import dj_database_url
+from pathlib import Path
+import environ
 
-from environs import Env
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-env = Env()
-env.read_env()
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 YA_API_KEY = env("YA_API_KEY")
 
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", ["127.0.0.1", "localhost"])
@@ -49,15 +49,15 @@ PHONENUMBER_DEFAULT_REGION = "RU"
 PHONENUMBER_DB_FORMAT = "E164"
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "rollbar.contrib.django.middleware.RollbarNotifierMiddleware",
 ]
 
 
@@ -68,13 +68,13 @@ ROLLBAR = {
     "access_token": ROLLBAR_TOKEN,
     "environment": "development" if DEBUG else "production",
     "code_version": "1.0",
-    "root": BASE_DIR,
+    "root": str(BASE_DIR),
     "enabled": ROLLBAR_ENABLED,
 }
 
 rollbar.init(**ROLLBAR)
 
-ROOT_URLCONF = 'star_burger.urls'
+ROOT_URLCONF = "star_burger.urls"
 
 DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.versions.VersionsPanel",
@@ -94,9 +94,7 @@ DEBUG_TOOLBAR_PANELS = [
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [
-            os.path.join(BASE_DIR, "templates"),
-        ],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -111,16 +109,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "star_burger.wsgi.application"
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
 
 
 DATABASES = {
-    'default': env.db(),
-    'old_sqlite': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    "default": env.db(default="postgres://burger_deploy:@127.0.0.1:5432/starburger"),
+    "old_sqlite": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -154,24 +152,24 @@ INTERNAL_IPS = ["127.0.0.1"]
 
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "assets"),
-    os.path.join(BASE_DIR, "bundles"),
+    BASE_DIR / "assets",
+    BASE_DIR / "bundles",
 ]
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'rollbar': {
-            'level': 'ERROR',
-            'class': 'rollbar.logger.RollbarHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "rollbar": {
+            "level": "ERROR",
+            "class": "rollbar.logger.RollbarHandler",
         },
     },
-    'loggers': {
-        'django.request': {
-            'handlers': ['rollbar'],
-            'level': 'ERROR',
-            'propagate': False,
+    "loggers": {
+        "django.request": {
+            "handlers": ["rollbar"],
+            "level": "ERROR",
+            "propagate": False,
         },
     },
 }
@@ -179,4 +177,4 @@ LOGGING = {
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", [])
 
 USE_X_FORWARDED_PROTO = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
