@@ -27,8 +27,6 @@ npm ci
 
 echo "3. Пересборка JS-кода (Parcel)..."
 npm run build
-sudo systemctl restart parcel-watch
-
 
 echo "4. Установка/обновление Python-библиотек..."
 source venv/bin/activate
@@ -38,7 +36,7 @@ deactivate
 echo "5. Применение миграций и сбор статики..."
 source venv/bin/activate
 python manage.py migrate --noinput
-python manage.py collectstatic --noinput --clear
+python manage.py collectstatic --noinput 
 deactivate
 
 echo "6. Перезапуск основных сервисов..."
