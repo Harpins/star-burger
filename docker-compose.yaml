@@ -1,0 +1,66 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=burger_deploy
+      - POSTGRES_PASSWORD=PASSWORD
+      - POSTGRES_DB=starburger
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U burger_deploy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SECRET_KEY=${SECRET_KEY}
+        - YA_API_KEY=${YA_API_KEY}
+        - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+        - DEBUG=${DEBUG}
+        - ROLLBAR_TOKEN=${ROLLBAR_TOKEN}
+        - ROLLBAR_ENABLED=${ROLLBAR_ENABLED}
+        - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput --clear &&
+             gunicorn star_burger.wsgi:application
+               --bind 0.0.0.0:8000
+               --workers 3
+               --timeout 120"
+    volumes:
+      - .:/star-burger
+      - static_volume:/static
+      - media_volume:/media
+    ports:
+      - 8000:8000
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./.env
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile.nginx
+    restart: unless-stopped
+    ports:
+      - 1337:80
+    volumes:
+      - static_volume:/static:ro
+      - media_volume:/media:ro
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
