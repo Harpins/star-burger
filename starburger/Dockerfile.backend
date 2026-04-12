@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+RUN groupadd -r groupdjango -g 1000 && \
+    useradd -r -g groupdjango -u 1000 -d /app -m userdjango
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/www/starburger
@@ -11,10 +14,8 @@ WORKDIR /app/www/starburger
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-RUN groupadd -r groupdjango && \
-    useradd -r -g groupdjango -d /app -m userdjango && \
-    mkdir -p staticfiles media bundles logs && \
-    chown -R userdjango:groupdjango /app/www/starburger && \
-    chmod 755 staticfiles media bundles logs
-
 COPY --chown=userdjango:groupdjango . .
+
+USER userdjango
+
+EXPOSE 8000

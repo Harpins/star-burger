@@ -1,7 +1,13 @@
 #!/bin/bash
-# entrypoint.sh - Минимальная версия
+# entrypoint.sh - запуск через Gunicorn
 
 set -e
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
+
+log "Starting Starburger entrypoint..."
 
 echo "Waiting for frontend build..."
 while [ ! -d /app/www/starburger/bundles ] || [ -z "$(ls -A /app/www/starburger/bundles 2>/dev/null)" ]; do
@@ -9,10 +15,31 @@ while [ ! -d /app/www/starburger/bundles ] || [ -z "$(ls -A /app/www/starburger/
     sleep 2
 done
 
-echo "Frontend found! Starting Django..."
+log "Frontend files:"
+ls -la /app/www/starburger/bundles/ | head -10
 
+
+echo "Running as user: $(whoami)"
+
+log "Running migrations..."
 python manage.py migrate --noinput
 
+log "Collecting static..."
 python manage.py collectstatic --noinput
+log "Static files collected successfully"
 
-exec python manage.py runserver 0.0.0.0:8000
+log "Starting Gunicorn server..."
+
+WORKERS="${GUNICORN_WORKERS:-3}"
+TIMEOUT="${GUNICORN_TIMEOUT:-120}"
+
+log "Workers: $WORKERS, Timeout: $TIMEOUT"
+
+exec gunicorn \
+    --workers $WORKERS \
+    --bind 0.0.0.0:8000 \
+    --timeout $TIMEOUT \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    star_burger.wsgi:application
