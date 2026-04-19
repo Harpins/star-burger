@@ -33,7 +33,7 @@ git clone https://github.com/devmanorg/star-burger.git
 ```
 2. Настройте переменные окружения
 
-Скопируйте файл .env.example в папку `/starburger` и переименуйте в .env
+Скопируйте файл .env.example в корневую папку и переименуйте в .env
 
 ### Переменные окружения
 
@@ -56,15 +56,6 @@ git clone https://github.com/devmanorg/star-burger.git
 - GUNICORN_WORKERS=3
 - GUNICORN_TIMEOUT=120
 
-!----------------------------------------------------------!
-
-Для корректной работы БД создайте в корне проекта еще один файл .env и скопируйте туда переменные:
-
-- POSTGRES_NAME
-- POSTGRES_USER
-- POSTGRES_PASSWORD
-
-!----------------------------------------------------------!
 
 Перейдите в каталог проекта:
 ```sh
