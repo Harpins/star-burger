@@ -1,14 +1,49 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-.venv/
-.env*
+# Git
+.git/
+.gitignore
+
+# IDE
+.editorconfig
+.vscode/
+.idea/
+
+# Документация
+README.md
+*.md
+
+# Локальные конфиги
+.env
+.env.local
+.env.*.local
+docker-compose.local.yml
+*entrypoint.local.sh
+
+# Логи и временные файлы
 *.log
-node_modules/
-dist/
-.parcel-cache/
+*.pyc
+__pycache__/
+*.sqlite3
+*.db
+.DS_Store
+
+# Статика и медиа (собираются в контейнере)
 staticfiles/
 media/
+bundles/
+
+# Фронтенд (собирается в отдельном контейнере)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Тесты
+.tests/
+.coverage
+htmlcov/
+
+# Файлы CI/CD
+.github/
+.gitlab-ci.yml
+
+
+*nginx.local/

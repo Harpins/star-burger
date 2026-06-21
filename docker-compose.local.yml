@@ -1,4 +1,5 @@
 services:
+
   frontend-builder:
     container_name: frontend-builder
     build:
@@ -8,9 +9,25 @@ services:
       - frontend_static:/output
     command: sh -c "cp -r /built-frontend/* /output/ && echo 'Frontend copied to /output'"
     restart: "no"
-    networks:
-      - dbnet
 
+  nginx:
+    build:
+      context: ./nginx
+    image: nginx:latest
+    container_name: nginx_server
+    networks: 
+      - dbnet
+    restart: always
+    ports:
+      - 80:80
+    volumes:
+      - ./starburger/staticfiles:/usr/share/nginx/html/static
+      - ./starburger/media:/usr/share/nginx/html/media
+      - ./starburger/logs:/app/www/starburger/logs
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - starburger
+    
   starburger:
     build: 
       context: ./starburger
@@ -18,25 +35,25 @@ services:
     image: starburger:latest
     container_name: starburger
     restart: always
-    command: ./entrypoint.sh
+    command: ./entrypoint.local.sh 
     env_file:
       - .env
     networks:
       - dbnet
     volumes:
-      - /var/www/starburger/staticfiles:/app/www/starburger/staticfiles
-      - /var/www/starburger/media:/app/www/starburger/media
+      - ./starburger:/app/www/starburger
       - frontend_static:/app/www/starburger/bundles
+    ports:
+      - "8000:8000"
     user: "1000:1000"
     depends_on:
       postgres:
         condition: service_healthy
       frontend-builder:
         condition: service_completed_successfully
-
+   
   postgres:
     image: postgres:17-alpine
-    restart: always
     container_name: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -52,10 +69,23 @@ services:
       timeout: 5s
       retries: 5
 
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    links:
+      - "postgres:db"
+    networks:
+      - dbnet
+    depends_on:
+      - postgres
 networks:
   dbnet:
     driver: bridge
 
 volumes:
   postgres_data:
+  static_volume:
+  media_volume:
   frontend_static:
