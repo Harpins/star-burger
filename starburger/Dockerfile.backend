@@ -19,3 +19,4 @@ COPY --chown=userdjango:groupdjango . .
 USER userdjango
 
 EXPOSE 8000
+

@@ -1,5 +1,4 @@
 #!/bin/bash
-# entrypoint.sh - запуск через Gunicorn
 
 set -e
 
@@ -18,15 +17,7 @@ done
 log "Frontend files:"
 ls -la /app/www/starburger/bundles/ | head -10
 
-
 echo "Running as user: $(whoami)"
-
-log "Running migrations..."
-python manage.py migrate --noinput
-
-log "Collecting static..."
-python manage.py collectstatic --noinput
-log "Static files collected successfully"
 
 log "Starting Gunicorn server..."
 
