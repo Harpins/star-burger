@@ -18,8 +18,7 @@ from .models import (
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
-    extra = 0
-    min_num = 1
+    extra = 1
     readonly_fields = ["fixed_price"]
 
     fields = ["product", "quantity", "fixed_price"]
@@ -27,8 +26,7 @@ class OrderItemInline(admin.TabularInline):
 
 class RestaurantMenuItemInline(admin.TabularInline):
     model = RestaurantMenuItem
-    extra = 0
-    min_num = 1
+    extra = 1
     fields = ["restaurant", "product", "availability"]
 
 
