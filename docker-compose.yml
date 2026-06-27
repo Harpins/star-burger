@@ -1,9 +1,7 @@
 services:
   frontend-builder:
     container_name: frontend-builder
-    build:
-      context: ./starburger
-      dockerfile: Dockerfile.frontend
+    image: star-burger-frontend-builder:latest
     volumes:
       - frontend_static:/output
     command: sh -c "cp -r /built-frontend/* /output/ && echo 'Frontend copied to /output'"
@@ -12,9 +10,6 @@ services:
       - dbnet
 
   starburger:
-    build: 
-      context: ./starburger
-      dockerfile: Dockerfile.backend
     image: starburger:latest
     container_name: starburger
     restart: always
